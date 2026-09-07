@@ -1,0 +1,193 @@
+function u32 Archipelago.getObjectId_xyPos(u16 x, u16 y)
+{
+	u32 id = u32((x << 16) | y)
+	if (id == 599787584 && global.zone == 0x06)
+	{
+		// Fix a conflict with a giant ring ID in LBZ and MHZ
+		id = 599787585
+	}
+	
+	return id
+}
+
+function bool Archipelago.IsKnucklesGoalNecessary()
+{
+	u8 mode = Archipelago.getDataInt("KnucklesStoryMode")
+	return mode != KnucklesStoryMode.NORMAL && mode != KnucklesStoryMode.REMOVED
+}
+
+function bool Archipelago.IsKnucklesExclusive()
+{
+	u8 mode = Archipelago.getDataInt("KnucklesStoryMode")
+	return mode == KnucklesStoryMode.EXCLUSIVE || mode == KnucklesStoryMode.EXCLUSIVE_TAILS
+}
+
+function void Archipelago.UpdateEmeraldCount()
+{
+	u8 emeraldCount = Archipelago.getItem("Chaos Emerald")
+	global.chaos_emeralds = 0
+	global.super_emeralds = 0
+	zeroMemory(0xffffffb2, 7)
+	for (u8 i = 1; i <= emeraldCount; i++)
+	{
+		if (global.chaos_emeralds < 7)
+		{
+			u8[0xffffffb2+global.chaos_emeralds] = 1
+			global.chaos_emeralds++
+		}
+		else if (global.super_emeralds < 7)
+		{
+			u8[0xffffffb2+global.super_emeralds] = 3
+			global.super_emeralds++
+		}
+		else
+		{
+			break
+		}
+	}
+}
+
+function void Archipelago.ApplySpeedUp()
+{
+	char.bonus_effect |= char.bonus.SPEED_UP
+	char.speedup.countdown = 150			// "char.speedup.countdown", decreases every 8 frames
+	if (!isMainCharacter(CHARACTER_TAILS))
+	{
+		setSpeedCapProperties(addressof(global.move.speedcap))			// Address: 0xfffff760
+	}
+	else
+	{
+		setSpeedCapProperties(addressof(global.move.speedcap.tails))	// Address: 0xfffffec0
+	}
+
+	changeMusicTempo(8)
+}
+
+function void Archipelago.ApplyInvincibility()
+{
+	if (super.active == 0 && super.active.tails == 0)
+	{
+		char.bonus_effect |= char.bonus.INVINCIBLE
+		char.invinc.countdown = 150
+		if (!level.boss_encounter && char.drown_countdown > 12)
+		{
+			playMusic(MUSIC_INVINCIBLE)
+		}
+		
+		u32[0xffffcd7c] = addressof(Invincibility.Init)	// Invincibility stars
+		u16[0xffffcd7c + 0x42] = 0xffffb000
+	}
+}
+
+function void Archipelago.CheckGoalCompletion()
+{
+	if (!Archipelago.isConnected())
+		return
+	
+	bool complete = false
+	u8 emeralds = Archipelago.getItem("Chaos Emerald")
+	u8 knucklesMode = Archipelago.getDataInt("KnucklesStoryMode")
+	if (knucklesMode < KnucklesStoryMode.EXCLUSIVE)
+	{
+		u8 goal = Archipelago.getDataInt("Goal")
+		if (goal == Goal.ALLZONES)
+		{
+			complete = Archipelago.AreAllZonesComplete(true, true, false)
+		}
+		else if (goal == Goal.DOOMSDAY)
+		{
+			complete = Archipelago.IsZoneActComplete(0x0c, 0, false) && emeralds >= 7
+		}
+		else if (goal == Goal.DOOMSDAY_HYPER)
+		{
+			complete = Archipelago.IsZoneActComplete(0x0c, 0, false) && emeralds >= 14
+		}
+		else if (goal == Goal.ALLZONES_DOOMSDAY)
+		{
+			complete = Archipelago.AreAllZonesComplete(true, true, false) && emeralds >= 7
+		}
+		else if (goal == Goal.ALLZONES_DOOMSDAY_HYPER)
+		{
+			complete = Archipelago.AreAllZonesComplete(true, true, false) && emeralds >= 14
+		}
+	}
+	
+	bool knucklesExclusive = (knucklesMode == KnucklesStoryMode.EXCLUSIVE || knucklesMode == KnucklesStoryMode.EXCLUSIVE_TAILS)
+	if ((complete || knucklesExclusive) && Archipelago.IsKnucklesGoalNecessary())
+	{
+		u8 goal = Archipelago.getDataInt("KnucklesGoal")
+		if (goal == Goal.ALLZONES)
+		{
+			complete = Archipelago.AreAllZonesComplete(true, true, true)
+		}
+		else if (goal == Goal.DOOMSDAY)
+		{
+			complete = Archipelago.IsZoneActComplete(0x0c, 0, true) && emeralds >= 7
+		}
+		else if (goal == Goal.DOOMSDAY_HYPER)
+		{
+			complete = Archipelago.IsZoneActComplete(0x0c, 0, true) && emeralds >= 14
+		}
+		else if (goal == Goal.ALLZONES_DOOMSDAY)
+		{
+			complete = Archipelago.AreAllZonesComplete(true, true, true) && emeralds >= 7
+		}
+		else if (goal == Goal.ALLZONES_DOOMSDAY_HYPER)
+		{
+			complete = Archipelago.AreAllZonesComplete(true, true, true) && emeralds >= 14
+		}
+		else if (goal == Goal.ALLZONES_SANCTUARY)
+		{
+			complete = Archipelago.IsZoneActComplete(0x0a, 1, true)
+		}
+	}
+	
+	if (complete)
+	{
+		Archipelago.triggerGoal()
+	}
+}
+
+// Note that this is based on levelselect.characters
+function bool Archipelago.IsCharUnlocked(u8 char)
+{
+	u16 sonic = Archipelago.getItem("Sonic")
+	u16 tails = Archipelago.getItem("Tails")
+	u16 knuckles = Archipelago.getItem("Knuckles")
+	u8 knucklesMode = Archipelago.getDataInt("KnucklesStoryMode")
+	if (knucklesMode == KnucklesStoryMode.EXCLUSIVE)
+	{
+		return char == 3
+	}
+	else if (knucklesMode == KnucklesStoryMode.EXCLUSIVE_TAILS)
+	{
+		return char == 3 || char == 4 && tails
+	}
+	else if (knucklesMode == KnucklesStoryMode.REMOVED && (char == 3 || char == 4))
+	{
+		return false
+	}
+	
+	if (char == 0) // Sonic & Tails
+	{
+		return sonic && tails
+	}
+	else if (char == 1) // Sonic Alone
+	{
+		return sonic
+	}
+	else if (char == 2) // Tails Alone
+	{
+		return tails
+	}
+	else if (char == 3) // Knuckles Alone
+	{
+		return knuckles
+	}
+	else if (char == 4) // Knuckles & Tails
+	{
+		return knuckles && tails
+	}
+	
+	return false
+}

@@ -1,0 +1,139 @@
+function u32 Game.getSetting(u32 settingId)
+{
+	if (settingId == SETTING_LEVELLAYOUTS)
+	{
+		return 2 // Force AIR level layouts for the sake of logic consistency
+	}
+	
+	return base.Game.getSetting(settingId)
+}
+
+function void TriggerNextZone(u16 zoneAndAct)
+{
+	u8 zone = zoneAndAct >> 8
+	Log = zone
+	if (zone == 0x0a || zone == 0x0d || zone == 0x0c || zoneAndAct == 0x1600 || zoneAndAct == 0x1601 && isMainCharacter(CHARACTER_KNUCKLES))
+	{
+		// Some levels don't trigger this callback
+		Game.onZoneActCompleted(global.zone_act.apparent)
+	}
+	
+	if (Archipelago.IsKnucklesGoalNecessary() && Archipelago.getDataInt("KnucklesGoal") != Goal.ALLZONES_SANCTUARY && isMainCharacter(CHARACTER_KNUCKLES) && zoneAndAct == 0x0a01)
+	{
+		// If Knuckles transitioning into Sky Sanctuary, don't go to the boss version if it's not our goal
+		zoneAndAct = 0x0a00
+	}
+	
+	// Don't prevent entry to some levels (LRZ boss, outro, etc)
+	bool invalidAct = zoneAndAct != 0x1600 && zoneAndAct != 0x1700 && zoneAndAct != 0x0d01 && zoneAndAct != 0x0d00
+	if (invalidAct && !Archipelago.IsZoneUnlocked(Archipelago.GetZoneNameInternal(zone), isMainCharacter(CHARACTER_KNUCKLES)))
+	{
+		Game.returnToMainMenu()
+		System.writeDisplayLine("The next zone is locked, so you were returned to the main menu.")
+		return
+	}
+	
+	ResetGiantRingIDs()
+	base.TriggerNextZone(zoneAndAct)
+}
+
+global bool CompleteTriggered
+//# address-hook(0x07bcfc) end(0x07bd2a)
+function void fn07bcfc()
+{
+	// Knuckles outro in Sky Sanctuary
+	base.fn07bcfc()
+	if (!CompleteTriggered)
+	{
+		CompleteTriggered = true
+		Game.onZoneActCompleted(0x0a01)
+	}
+}
+
+//# address-hook(0x007a74) end(0x007d20)
+//# translated(0x007d64) end(0x007d6a)
+function void LevelSelect()
+{
+	// No Level Select menu in AP, unless we're in debug
+	if (!debug_mode.enabled)
+	{
+		Game.returnToMainMenu()
+		return
+	}
+	
+	base.LevelSelect()
+}
+
+//# address-hook(0x009b62) end(0x009d1c)
+function void fn009b62()
+{
+	base.fn009b62()
+	Archipelago.UpdateEmeraldCount()	
+}
+
+function void Game.returnToMainMenu()
+{
+	base.Game.returnToMainMenu()
+	Archipelago.CheckGoalCompletion()
+	EmeraldsUpdated = false
+}
+
+function void DataSelect.sharedNewGameStartup()
+{
+	base.DataSelect.sharedNewGameStartup()
+	Archipelago.UpdateEmeraldCount()
+}
+
+// Fix for Knuckles & Tails
+function u8 getMainCharacter()
+{
+	if (global.characters == CHARS_SONIC_AND_TAILS || global.characters == CHARS_SONIC_ALONE)
+	{
+		return CHARACTER_SONIC
+	}
+	else if (global.characters == CHARS_TAILS_ALONE)
+	{
+		return CHARACTER_TAILS
+	}
+	else if (global.characters == CHARS_KNUCKLES_ALONE || global.characters == CHARS_KNUCKLES_AND_TAILS)
+	{
+		return CHARACTER_KNUCKLES
+	}
+	else
+	{
+		assert(false, "Unsupported character selection")
+		return CHARACTER_SONIC
+	}
+}
+
+//# address-hook(0x0013e4) end(0x0014e4)
+function void UpdateGamePause()
+{
+	// Fix being unable to pause in a special stage started from act select
+	if (lives_counter <= 0 && (global.game_mode & 0x34) == 0)
+	{
+		global.game.paused = false
+		return
+	}
+
+	// Start button pressed?
+	if (control.pad1.pressed & CONTROL_START)
+	{
+		if (!GamePause.BeginPause())
+			return
+
+		global.game.paused = true
+		global.frame_state = 0x10
+
+		GamePause.Menu()
+
+		Standalone.onResumeAfterPause()
+		global.game.paused = false
+
+	#if GAMEAPP
+		// Fix for brief glitch in Blue Spheres special stage
+		if (global.game_mode == 0x34)
+			BlueSpheres.replacePlaneRendering()
+	#endif
+	}
+}

@@ -1,0 +1,282 @@
+#if ARCHIPELAGO
+
+//# script-feature-level(2)
+include tweaks
+include specialstages
+include helpers
+include zones
+include compass
+include actselect_ap
+
+constant u32 Addr.LastItemIndex = 0x880100
+constant u32 Addr.ZoneProgressStart = 0x880150
+constant u32 Addr.ZoneProgressStart.Knuckles = 0x880250
+
+// Option values (from the apworld)
+constant u8 Goal.ALLZONES = 0
+constant u8 Goal.DOOMSDAY = 1 
+constant u8 Goal.DOOMSDAY_HYPER = 2
+constant u8 Goal.ALLZONES_DOOMSDAY = 3
+constant u8 Goal.ALLZONES_DOOMSDAY_HYPER = 4
+constant u8 Goal.ALLZONES_SANCTUARY = 5
+
+constant u8 ZoneUnlockMode.LINEAR = 0
+constant u8 ZoneUnlockMode.SHUFFLED = 1
+constant u8 ZoneUnlockMode.SHUFFLED_DEATHEGG = 2
+
+constant u8 KnucklesStoryMode.NORMAL = 0
+constant u8 KnucklesStoryMode.GOAL = 1
+constant u8 KnucklesStoryMode.REMOVED = 2
+constant u8 KnucklesStoryMode.EXCLUSIVE = 3
+constant u8 KnucklesStoryMode.EXCLUSIVE_TAILS = 4
+
+// Mod options
+global u8 option.ap.checkCompass
+
+// Other variables
+global u32 GiantRingIDs[16]
+
+function void Init()
+{
+	base.Init()
+	ResetGiantRingIDs()
+}
+
+function void Archipelago.OnConnected()
+{
+	System.writeDisplayLine("Connected to Archipelago!")
+}
+
+function void Archipelago.OnDisconnected()
+{
+	System.writeDisplayLine("Lost connection to Archipelago server")
+}
+
+function void Game.onZoneActCompleted(u16 zoneAndAct)
+{
+	if (Game.isTimeAttack() || global.rolling_demo)
+	{
+		return
+	}
+	
+	u8 zone = zoneAndAct >> 8
+	u8 act = zoneAndAct & 0xFF
+	u32 addr = Addr.ZoneProgressStart + u32(zone)
+	bool knuckles = isMainCharacter(CHARACTER_KNUCKLES) && Archipelago.IsKnucklesGoalNecessary()
+	if (knuckles)
+	{
+		addr = Addr.ZoneProgressStart.Knuckles + u32(zone)
+	}
+	
+	// Fix some oddities with zone/act IDs
+	if (zone == 0x16 && act == 0x00) // Lava Reef Act 2 boss
+	{
+		zone = 0x09
+		act = 0x01
+	}
+	else if (zone == 0x17) // Death Egg giant robot
+	{
+		zone = 0x0b
+		act = 0x01
+	}
+	
+	string seed = Archipelago.getSeedName()
+	System.loadPersistentData(addr, 4, "s3air_archipelago", stringformat("ZoneProgress%d_%d_%s", zone, knuckles, seed), false)
+	u8[addr] |= 1 << act
+	System.savePersistentData(addr, 4, "s3air_archipelago", stringformat("ZoneProgress%d_%d_%s", zone, knuckles, seed), false)
+	u64 id = Archipelago.getZoneActIdOffset64(zone, act)
+	LogDec = stringformat("%s Act %d: %d", Archipelago.GetZoneNameInternal(zone), act, id)
+	Archipelago.sendLocation(id)
+	Archipelago.CheckGoalCompletion()
+}
+
+function void Archipelago.OnNewItem(string item, s32 index)
+{
+	if (s32[Addr.LastItemIndex] == 0)
+	{
+		string seed = Archipelago.getSeedName()
+		System.loadPersistentData(Addr.LastItemIndex, 4, "s3air_archipelago", stringformat("LastItemIndex_%s", seed), false)
+		if (s32[Addr.LastItemIndex] == 0)
+		{
+			// just so we don't keep loading this repeatedly if it's uninitialized
+			s32[Addr.LastItemIndex] = -1
+		}
+	}
+	
+	if (index <= s32[Addr.LastItemIndex])
+	{
+		return
+	}
+	
+	//System.writeDisplayLine(stringformat("Got Item: %s", item))
+	u64 itemEffectFlags = Archipelago.getDataInt("ItemEffectFlags")
+	u32 storedRings = Archipelago.getDataInt("StoredRings")
+	u16 storedLives = Archipelago.getDataInt("StoredLives")
+	if (item == "Invincibility") 
+	{
+		itemEffectFlags |= char.bonus.INVINCIBLE
+	}
+	else if (item == "Speed Shoes") 
+	{
+		itemEffectFlags |= char.bonus.SPEED_UP
+	}
+	else if (item == "Fire Shield") 
+	{
+		itemEffectFlags &= ~char.bonus.ALL_SHIELDS
+		itemEffectFlags |= char.bonus.SHIELD_FIRE
+	}
+	else if (item == "Bubble Shield") 
+	{
+		itemEffectFlags &= ~char.bonus.ALL_SHIELDS
+		itemEffectFlags |= char.bonus.SHIELD_BUBBLE
+	}
+	else if (item == "Electric Shield") 
+	{
+		itemEffectFlags &= ~char.bonus.ALL_SHIELDS
+		itemEffectFlags |= char.bonus.SHIELD_LIGHTNING
+	}
+	else if (item == "10 Rings") 
+	{
+		storedRings += 10
+	}
+	else if (item == "Extra Life") 
+	{
+		storedLives++
+	}
+	
+	Archipelago.setDataInt("ItemEffectFlags", itemEffectFlags)
+	Archipelago.setDataInt("StoredRings", storedRings)
+	Archipelago.setDataInt("StoredLives", storedLives)
+}
+
+function void Archipelago.OnReceivedItems(s32 highestIndex, bool progression)
+{
+	string seed = Archipelago.getSeedName()
+	if (s32[Addr.LastItemIndex] == 0)
+	{
+		System.loadPersistentData(Addr.LastItemIndex, 4, "s3air_archipelago", stringformat("LastItemIndex_%s", seed), false)
+	}
+	
+	if (highestIndex > s32[Addr.LastItemIndex])
+	{
+		s32[Addr.LastItemIndex] = highestIndex
+		System.savePersistentData(Addr.LastItemIndex, 4, "s3air_archipelago", stringformat("LastItemIndex_%s", seed), false)
+		if (progression)
+		{
+			playSound(0xb0)
+		}
+	}
+	
+	Archipelago.UpdateEmeraldCount()
+}
+
+global u8 UpdateDelay = 10
+global bool EmeraldsUpdated = false
+function void OnCharacterUpdate(u8 charId)
+{
+	if (global.rolling_demo || Game.isTimeAttack())
+	{
+		return
+	}
+	
+	if (!EmeraldsUpdated)
+	{
+		Archipelago.UpdateEmeraldCount()
+		EmeraldsUpdated = true
+	}
+	
+	// this is to avoid accidentally wasting consumables in levels that start with cutscenes, e.g. AIZ 1
+	// as there is a short window where the "in cutscene" flag is not set
+	if (UpdateDelay > 0)
+	{
+		UpdateDelay--
+		return
+	}
+	
+	// Player is probably in a cutscene (e.g. AIZ intro) so wait before giving them consumables
+	if (char.control_flags & (control_flag.DISABLE_WALLS|control_flag.DISABLE_UPDATE|control_flag.DISABLE_ANIMATION))
+	{
+		return
+	}
+	
+	// Process items with instant effects
+	// Rings
+	u32 storedRings = Archipelago.getDataInt("StoredRings")
+	if (storedRings > 0)
+	{
+		addRings(storedRings)
+		Archipelago.setDataInt("StoredRings", 0)
+	}
+	
+	// Lives
+	u32 storedLives = Archipelago.getDataInt("StoredLives")
+	Archipelago.setDataInt("StoredLives", 0)
+	while (storedLives > 0)
+	{
+		gainExtraLife()
+		storedLives--
+	}
+	
+	u64 itemEffectFlags = Archipelago.getDataInt("ItemEffectFlags")
+	if (itemEffectFlags)
+	{
+		if (itemEffectFlags & char.bonus.INVINCIBLE)
+		{
+			Archipelago.ApplyInvincibility()
+		}
+		
+		if (itemEffectFlags & char.bonus.SPEED_UP)
+		{
+			Archipelago.ApplySpeedUp()
+		}
+		
+		if ((char.bonus_effect & char.bonus.ANY_SHIELD) == 0)
+		{
+			if (itemEffectFlags & char.bonus.SHIELD_FIRE)
+			{
+				fn0611d6()
+				char.bonus_effect |= char.bonus.ANY_SHIELD
+			}
+			else if (itemEffectFlags & char.bonus.SHIELD_BUBBLE)
+			{
+				fn061200()
+				char.bonus_effect |= char.bonus.ANY_SHIELD
+			}
+			else if (itemEffectFlags & char.bonus.SHIELD_LIGHTNING)
+			{
+				fn06122a()
+				char.bonus_effect |= char.bonus.ANY_SHIELD
+			}
+		}
+		else
+		{
+			// If we already had a shield, give 5 rings for compensation
+			addRings(5)
+		}
+		
+		Archipelago.setDataInt("ItemEffectFlags", 0)
+	}
+}
+
+//# address-hook(0x010a94) end(0x010ae8)
+function void Character.BaseUpdate.Sonic()
+{
+	base.Character.BaseUpdate.Sonic()
+	OnCharacterUpdate(CHARACTER_SONIC)
+}
+
+//# address-hook(0x01365c) end(0x0136b8)
+function void Character.BaseUpdate.Tails()
+{
+	base.Character.BaseUpdate.Tails()
+	OnCharacterUpdate(CHARACTER_TAILS)
+}
+
+//# address-hook(0x016444) end(0x016498)
+function void Character.BaseUpdate.Knuckles()
+{
+	base.Character.BaseUpdate.Knuckles()
+	OnCharacterUpdate(CHARACTER_KNUCKLES)
+}
+
+#endif
