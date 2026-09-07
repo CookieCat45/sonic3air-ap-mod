@@ -84,10 +84,20 @@ function void Archipelago.CheckGoalCompletion()
 	if (!Archipelago.isConnected())
 		return
 	
+	if (Archipelago.IsGoalComplete())
+	{
+		Archipelago.triggerGoal()
+	}
+}
+
+function bool Archipelago.IsGoalComplete()
+{
+	if (!Archipelago.isConnected())
+		return false
+	
 	bool complete = false
 	u8 emeralds = Archipelago.getItem("Chaos Emerald")
-	u8 knucklesMode = Archipelago.getDataInt("KnucklesStoryMode")
-	if (knucklesMode < KnucklesStoryMode.EXCLUSIVE)
+	if (!Archipelago.IsKnucklesExclusive())
 	{
 		u8 goal = Archipelago.getDataInt("Goal")
 		if (goal == Goal.ALLZONES)
@@ -112,8 +122,7 @@ function void Archipelago.CheckGoalCompletion()
 		}
 	}
 	
-	bool knucklesExclusive = (knucklesMode == KnucklesStoryMode.EXCLUSIVE || knucklesMode == KnucklesStoryMode.EXCLUSIVE_TAILS)
-	if ((complete || knucklesExclusive) && Archipelago.IsKnucklesGoalNecessary())
+	if ((complete || Archipelago.IsKnucklesExclusive()) && Archipelago.IsKnucklesGoalNecessary())
 	{
 		u8 goal = Archipelago.getDataInt("KnucklesGoal")
 		if (goal == Goal.ALLZONES)
@@ -142,10 +151,7 @@ function void Archipelago.CheckGoalCompletion()
 		}
 	}
 	
-	if (complete)
-	{
-		Archipelago.triggerGoal()
-	}
+	return complete
 }
 
 // Note that this is based on levelselect.characters

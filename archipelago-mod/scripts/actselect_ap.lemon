@@ -71,6 +71,12 @@ function string ActSelect.GetCharacterCombinationName(u8 index)
 function void ActSelect.Menu(u8 fadeInMethod)
 {
 	bool connected = Archipelago.isConnected()
+	if (!connected)
+	{
+		Game.returnToMainMenu()
+		System.writeDisplayLine("Please connect to Archipelago first.")
+		return
+	}
 	
 	// Load palette for the background
 	{

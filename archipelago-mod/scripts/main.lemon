@@ -32,9 +32,11 @@ constant u8 KnucklesStoryMode.EXCLUSIVE_TAILS = 4
 
 // Mod options
 global u8 option.ap.checkCompass
+global u8 option.ap.deathLink
 
 // Other variables
 global u32 GiantRingIDs[16]
+global bool DeathLinked = false
 
 function void Init()
 {
@@ -277,6 +279,49 @@ function void Character.BaseUpdate.Knuckles()
 {
 	base.Character.BaseUpdate.Knuckles()
 	OnCharacterUpdate(CHARACTER_KNUCKLES)
+}
+
+function void Archipelago.OnDeathLink(float time, string cause, string source)
+{
+	float lastDeathTime = Archipelago.getDataFloat("LastDeathTime")
+	if (time > lastDeathTime && !DeathLinked)
+	{
+		DeathLinked = true
+		Archipelago.setDataFloat("LastDeathTime", time)
+		Character.Die()
+		string msg = ""
+		if (source != "")
+		{
+			msg += "You were killed by " + source
+		}
+		
+		if (cause != "")
+		{
+			msg += " (Reason: " + cause + ")"
+		}
+		
+		if (msg != "")
+		{
+			System.writeDisplayLine(msg)
+		}
+		else
+		{
+			System.writeDisplayLine("You were killed by an unknown player in the multiworld")
+		}
+	}
+}
+
+//# address-hook(0x010366) end(0x01036c)
+function void Character.Die()
+{
+	base.Character.Die()
+	return
+	if (!DeathLinked && Archipelago.isConnected())
+	{
+		Archipelago.sendDeath()
+	}
+	
+	DeathLinked = false
 }
 
 #endif

@@ -18,8 +18,10 @@ function u16 GetSpecialStageId()
 function void fn009ea0()
 {
 	base.fn009ea0()
-	if (global.rolling_demo)
+	if (global.rolling_demo || bluespheres.minigame_mode == 1)
+	{
 		return
+	}
 		
 	TotalSpheres = bluespheres.blue_remaining
 	TotalRings = bluespheres.rings_remaining
@@ -29,8 +31,10 @@ function void fn009ea0()
 function void BlueSpheres.OnBlueSphereCollected()
 {
 	base.BlueSpheres.OnBlueSphereCollected()
-	if (global.rolling_demo)
+	if (global.rolling_demo || bluespheres.minigame_mode == 1)
+	{
 		return
+	}
 	
 	u16 collected = abs(bluespheres.blue_remaining-TotalSpheres)
 	float percent = float(collected) / float(TotalSpheres)
@@ -47,8 +51,10 @@ function void BlueSpheres.OnBlueSphereCollected()
 function void fn00972e()
 {
 	base.fn00972e()
-	if (global.rolling_demo)
+	if (global.rolling_demo || bluespheres.minigame_mode == 1)
+	{
 		return
+	}
 	
 	if (D2.u8 == 4) // Ring was collected
 	{
