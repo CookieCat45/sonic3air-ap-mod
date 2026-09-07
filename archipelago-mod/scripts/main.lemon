@@ -1,5 +1,3 @@
-#if ARCHIPELAGO
-
 //# script-feature-level(2)
 include tweaks
 include specialstages
@@ -11,6 +9,35 @@ include actselect_ap
 constant u32 Addr.LastItemIndex = 0x880100
 constant u32 Addr.ZoneProgressStart = 0x880150
 constant u32 Addr.ZoneProgressStart.Knuckles = 0x880250
+
+// Items
+constant u32 Item.TENRINGS = 2020300001
+constant u32 Item.EXTRALIFE = 2020300002
+constant u32 Item.FIRESHIELD = 2020300003
+constant u32 Item.BUBBLESHIELD = 2020300004
+constant u32 Item.ELECTRICSHIELD = 2020300005
+constant u32 Item.INVINCIBILITY = 2020300006
+constant u32 Item.SPEEDSHOES = 2020300007
+constant u32 Item.SONIC = 2020300008
+constant u32 Item.TAILS = 2020300009
+constant u32 Item.KNUCKLES = 2020300010
+constant u32 Item.UNLOCK_ANGELISLAND = 2020300011
+constant u32 Item.UNLOCK_HYDROCITY = 2020300012
+constant u32 Item.UNLOCK_MARBLEGARDEN = 2020300013
+constant u32 Item.UNLOCK_CARNIVALNIGHT = 2020300014
+constant u32 Item.UNLOCK_ICECAP = 2020300015
+constant u32 Item.UNLOCK_LAUNCHBASE = 2020300016
+constant u32 Item.UNLOCK_MUSHROOMHILL = 2020300017
+constant u32 Item.UNLOCK_FLYINGBATTERY = 2020300018
+constant u32 Item.UNLOCK_SANDOPOLIS = 2020300019
+constant u32 Item.UNLOCK_LAVAREEF = 2020300020
+constant u32 Item.UNLOCK_HIDDENPALACE = 2020300021
+constant u32 Item.UNLOCK_SKYSANCTUARY = 2020300022
+constant u32 Item.UNLOCK_DEATHEGG = 2020300023
+constant u32 Item.PROGRESSIVE_ZONE_UNLOCK = 2020300024
+constant u32 Item.PROGRESSIVE_SPECIAL_UNLOCK = 2020300025
+constant u32 Item.CHAOS_EMERALD = 2020300026
+
 
 // Option values (from the apworld)
 constant u8 Goal.ALLZONES = 0
@@ -42,6 +69,7 @@ function void Init()
 {
 	base.Init()
 	ResetGiantRingIDs()
+	Archipelago.start()
 }
 
 function void Archipelago.OnConnected()
@@ -92,8 +120,9 @@ function void Game.onZoneActCompleted(u16 zoneAndAct)
 	Archipelago.CheckGoalCompletion()
 }
 
-function void Archipelago.OnNewItem(string item, s32 index)
+function void Archipelago.OnNewItem(string item, u64 id)
 {
+	/*
 	if (s32[Addr.LastItemIndex] == 0)
 	{
 		string seed = Archipelago.getSeedName()
@@ -109,6 +138,7 @@ function void Archipelago.OnNewItem(string item, s32 index)
 	{
 		return
 	}
+	*/
 	
 	//System.writeDisplayLine(stringformat("Got Item: %s", item))
 	u64 itemEffectFlags = Archipelago.getDataInt("ItemEffectFlags")
@@ -318,10 +348,8 @@ function void Character.Die()
 	return
 	if (!DeathLinked && Archipelago.isConnected())
 	{
-		Archipelago.sendDeath()
+		//Archipelago.sendDeath()
 	}
 	
 	DeathLinked = false
 }
-
-#endif

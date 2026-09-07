@@ -130,7 +130,7 @@ function bool Archipelago.IsZoneUnlocked(string zone, bool knuckles)
 	u8 unlockMode = Archipelago.getDataInt("ZoneUnlockMode")
 	if (zone == "Doomsday Zone")
 	{
-		u8 emeralds = Archipelago.getItem("Chaos Emerald")
+		u8 emeralds = Archipelago.getItemCount(Item.CHAOS_EMERALD)
 		if (!knuckles)
 		{
 			u8 goal = Archipelago.getDataInt("Goal")
@@ -156,7 +156,7 @@ function bool Archipelago.IsZoneUnlocked(string zone, bool knuckles)
 	}
 	else if (zone == "Special Stage")
 	{
-		return Archipelago.getItem("Progressive Special Stage Unlock") > 0
+		return Archipelago.getItemCount(Item.PROGRESSIVE_SPECIAL_UNLOCK) > 0
 	}
 	else if (knuckles && zone == "Sky Sanctuary Zone" && Archipelago.getDataInt("KnucklesGoal") == Goal.ALLZONES_SANCTUARY)
 	{
@@ -187,7 +187,7 @@ function bool Archipelago.IsZoneUnlocked(string zone, bool knuckles)
 			}
 		}
 		
-		return index >= 0 && Archipelago.getItem("Progressive Zone Unlock") >= index+1
+		return index >= 0 && Archipelago.getItemCount(Item.PROGRESSIVE_ZONE_UNLOCK) >= index+1
 	}
 	else if (zone == "Death Egg Zone")
 	{

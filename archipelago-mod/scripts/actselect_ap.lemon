@@ -335,7 +335,7 @@ function void ActSelect.Menu(u8 fadeInMethod)
 			bool actLocked = false
 			if (selectedZone == 14)
 			{
-				if (Archipelago.getItem("Progressive Special Stage Unlock") < selectedAct+1)
+				if (Archipelago.getItemCount(Item.PROGRESSIVE_SPECIAL_UNLOCK) < selectedAct+1)
 				{
 					actLocked = true
 				}
@@ -540,7 +540,7 @@ function void ActSelect.DrawMenu(u8 selectedEntry, u8 selectedZone, u8 selectedA
 		{
 			if (selectedZone == 14)
 			{
-				if (Archipelago.getItem("Progressive Special Stage Unlock") < selectedAct+1)
+				if (Archipelago.getItemCount(Item.PROGRESSIVE_SPECIAL_UNLOCK) < selectedAct+1)
 				{
 					actLocked = true
 				}
