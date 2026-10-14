@@ -1,7 +1,8 @@
 function u8 ActSelect.GetNumZones()
 {
+	JsonReader data = Archipelago.getSlotData()
 	u8 numZones = ActSelect.ZONES.length()
-	if (Archipelago.getDataInt("SpecialStageUnlockItemCount") > 0)
+	if (data.getInteger("SpecialStageUnlockItemCount") > 0)
 	{
 		numZones++
 	}
@@ -23,9 +24,10 @@ function string ActSelect.GetZoneName(u8 zoneNumber)
 
 function u8 ActSelect.GetNumActs(u8 zoneNumber)
 {
+	JsonReader data = Archipelago.getSlotData()
 	if (zoneNumber == 14)
 	{
-		return Archipelago.getDataInt("SpecialStageUnlockItemCount")
+		return data.getInteger("SpecialStageUnlockItemCount")
 	}
 	
 	return base.ActSelect.GetNumActs(zoneNumber)
@@ -51,7 +53,7 @@ function string ActSelect.GetZonePreviewKey(u8 zone, u8 act, u8 image)
 
 function u8 ActSelect.GetNumCharacterCombinations()
 {
-	u8 numCharacterCombinations = ActSelect.CHARACTER_COMBINATION_NAME.length()
+	u8 numCharacterCombinations = ActSelect.CHARACTER_COMBINATION_NAME_WESTERN.length()
 	//if (!Game.isSecretUnlocked(SECRET_KNUX_AND_TAILS))
 	//	--numCharacterCombinations
 	return numCharacterCombinations
@@ -59,10 +61,10 @@ function u8 ActSelect.GetNumCharacterCombinations()
 
 function string ActSelect.GetCharacterCombinationName(u8 index)
 {
-	string val = ActSelect.CHARACTER_COMBINATION_NAME[index]
+	string val = ActSelect.CHARACTER_COMBINATION_NAME_WESTERN[index]
 	if (!Archipelago.IsCharUnlocked(index))
 	{
-		val = stringformat("%s", ActSelect.CHARACTER_COMBINATION_NAME[index])
+		val = stringformat("%s", ActSelect.CHARACTER_COMBINATION_NAME_WESTERN[index])
 	}
 	
 	return val 
@@ -78,6 +80,7 @@ function void ActSelect.Menu(u8 fadeInMethod)
 		return
 	}
 	
+	JsonReader data = Archipelago.getSlotData()
 	// Load palette for the background
 	{
 		copyMemory(0xfffffc00, 0x39d262, 0x20)
@@ -109,7 +112,7 @@ function void ActSelect.Menu(u8 fadeInMethod)
 		}
 	}
 	
-	while (!Archipelago.isZoneAllowed(ActSelect.GetZoneName(selectedZone)) || !Archipelago.IsZoneUnlocked(ActSelect.GetZoneName(selectedZone), levelselect.characters >= 3) && selectedZone != 14)
+	while (!Archipelago.IsZoneAllowed(ActSelect.GetZoneName(selectedZone)) || !Archipelago.IsZoneUnlocked(ActSelect.GetZoneName(selectedZone), levelselect.characters >= 3) && selectedZone != 14)
 	{
 		selectedZone++
 	}
@@ -244,7 +247,7 @@ function void ActSelect.Menu(u8 fadeInMethod)
 			selectedEntry = (selectedEntry + 4 + entryChange) % 4
 		}
 
-		bool linear = Archipelago.getDataInt("ZoneUnlockMode") == ZoneUnlockMode.LINEAR
+		bool linear = data.getInteger("ZoneUnlockMode") == ZoneUnlockMode.LINEAR
 		s8 optionChange = (currentInput == BUTTON_LEFT) ? -1 : (currentInput == BUTTON_RIGHT) ? 1 : 0
 		if (optionChange != 0)
 		{
@@ -269,7 +272,7 @@ function void ActSelect.Menu(u8 fadeInMethod)
 					selectedZone = clamp(s16(selectedZone) + optionChange, 0, ActSelect.GetNumZones() - 1)
 				}
 				
-				while (!Archipelago.isZoneAllowed(ActSelect.GetZoneName(selectedZone)))
+				while (!Archipelago.IsZoneAllowed(ActSelect.GetZoneName(selectedZone)))
 				{
 					selectedZone += optionChange
 				}
@@ -306,7 +309,7 @@ function void ActSelect.Menu(u8 fadeInMethod)
 				
 				if (prevZone != selectedZone)
 				{
-					while (!Archipelago.isZoneAllowed(ActSelect.GetZoneName(selectedZone)))
+					while (!Archipelago.IsZoneAllowed(ActSelect.GetZoneName(selectedZone)))
 					{
 						selectedZone += optionChange
 					}
@@ -438,6 +441,7 @@ function void ActSelect.Menu(u8 fadeInMethod)
 function void ActSelect.DrawMenu(u8 selectedEntry, u8 selectedZone, u8 selectedAct, s16 anchorX)
 {
 	bool connected = Archipelago.isConnected()
+	JsonReader data = Archipelago.getSlotData()
 	bool unlocked = Archipelago.IsZoneUnlocked(ActSelect.GetZoneName(selectedZone), (levelselect.characters >= 3))
 	bool charUnlocked = Archipelago.IsCharUnlocked(levelselect.characters)
 	u32 completeColor = 0x36d150ff
@@ -480,7 +484,7 @@ function void ActSelect.DrawMenu(u8 selectedEntry, u8 selectedZone, u8 selectedA
 			}
 			else
 			{
-				canGoRight = Archipelago.getDataInt("ZoneUnlockMode") != ZoneUnlockMode.LINEAR
+				canGoRight = data.getInteger("ZoneUnlockMode") != ZoneUnlockMode.LINEAR
 			}
 		}
 		else if (entryIndex == 1)

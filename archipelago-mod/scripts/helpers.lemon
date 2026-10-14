@@ -12,13 +12,15 @@ function u32 Archipelago.getObjectId_xyPos(u16 x, u16 y)
 
 function bool Archipelago.IsKnucklesGoalNecessary()
 {
-	u8 mode = Archipelago.getDataInt("KnucklesStoryMode")
+	JsonReader data = Archipelago.getSlotData()
+	u8 mode = data.getInteger("KnucklesStoryMode")
 	return mode != KnucklesStoryMode.NORMAL && mode != KnucklesStoryMode.REMOVED
 }
 
 function bool Archipelago.IsKnucklesExclusive()
 {
-	u8 mode = Archipelago.getDataInt("KnucklesStoryMode")
+	JsonReader data = Archipelago.getSlotData()
+	u8 mode = data.getInteger("KnucklesStoryMode")
 	return mode == KnucklesStoryMode.EXCLUSIVE || mode == KnucklesStoryMode.EXCLUSIVE_TAILS
 }
 
@@ -95,11 +97,12 @@ function bool Archipelago.IsGoalComplete()
 	if (!Archipelago.isConnected())
 		return false
 	
+	JsonReader data = Archipelago.getSlotData()
 	bool complete = false
 	u8 emeralds = Archipelago.getItemCount(Item.CHAOS_EMERALD)
 	if (!Archipelago.IsKnucklesExclusive())
 	{
-		u8 goal = Archipelago.getDataInt("Goal")
+		u8 goal = data.getInteger("Goal")
 		if (goal == Goal.ALLZONES)
 		{
 			complete = Archipelago.AreAllZonesComplete(true, true, false)
@@ -124,7 +127,7 @@ function bool Archipelago.IsGoalComplete()
 	
 	if ((complete || Archipelago.IsKnucklesExclusive()) && Archipelago.IsKnucklesGoalNecessary())
 	{
-		u8 goal = Archipelago.getDataInt("KnucklesGoal")
+		u8 goal = data.getInteger("KnucklesGoal")
 		if (goal == Goal.ALLZONES)
 		{
 			complete = Archipelago.AreAllZonesComplete(true, true, true)
@@ -160,7 +163,8 @@ function bool Archipelago.IsCharUnlocked(u8 char)
 	u16 sonic = Archipelago.getItemCount(Item.SONIC)
 	u16 tails = Archipelago.getItemCount(Item.TAILS)
 	u16 knuckles = Archipelago.getItemCount(Item.KNUCKLES)
-	u8 knucklesMode = Archipelago.getDataInt("KnucklesStoryMode")
+	JsonReader data = Archipelago.getSlotData()
+	u8 knucklesMode = data.getInteger("KnucklesStoryMode")
 	if (knucklesMode == KnucklesStoryMode.EXCLUSIVE)
 	{
 		return char == 3
@@ -196,60 +200,4 @@ function bool Archipelago.IsCharUnlocked(u8 char)
 	}
 	
 	return false
-}
-
-function u32 Archipelago.ZoneNameToItem(string zone)
-{
-	if (zone == "Angel Island Zone")
-	{
-		return Item.UNLOCK_ANGELISLAND
-	}
-	else if (zone == "Hydrocity Zone")
-	{
-		return Item.UNLOCK_HYDROCITY
-	}
-	else if (zone == "Marble Garden Zone")
-	{
-		return Item.UNLOCK_MARBLEGARDEN
-	}
-	else if (zone == "Carnival Night Zone")
-	{
-		return Item.UNLOCK_CARNIVALNIGHT
-	}
-	else if (zone == "IceCap Zone" || zone == "Ice Cap Zone")
-	{
-		return Item.UNLOCK_ICECAP
-	}
-	else if (zone == "Launch Base Zone")
-	{
-		return Item.UNLOCK_LAUNCHBASE
-	}
-	else if (zone == "Mushroom Hill Zone")
-	{
-		return Item.UNLOCK_MUSHROOMHILL
-	}
-	else if (zone == "Flying Battery Zone")
-	{
-		return Item.UNLOCK_FLYINGBATTERY
-	}
-	else if (zone == "Sandopolis Zone")
-	{
-		return Item.UNLOCK_SANDOPOLIS
-	}
-	else if (zone == "Lava Reef Zone")
-	{
-		return Item.UNLOCK_LAVAREEF
-	}
-	else if (zone == "Hidden Palace Zone")
-	{
-		return Item.UNLOCK_HIDDENPALACE
-	}
-	else if (zone == "Sky Sanctuary Zone")
-	{
-		return Item.UNLOCK_SKYSANCTUARY
-	}
-	else if (zone == "Death Egg Zone")
-	{
-		return Item.UNLOCK_DEATHEGG
-	}
 }

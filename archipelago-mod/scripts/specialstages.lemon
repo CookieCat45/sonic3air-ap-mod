@@ -43,6 +43,11 @@ function void BlueSpheres.OnBlueSphereCollected()
 		
 	u64 id = 1 + (20 * GetSpecialStageId())
 	id += 2 * (Math.floorToInt(percent / 0.1)-1)
+	if (Archipelago.isLocationChecked(id) || !Archipelago.doesLocationExist(id))
+	{
+		return
+	}
+	
 	Archipelago.sendLocation(id)
 }
 
@@ -64,6 +69,11 @@ function void fn00972e()
 			
 		u64 id = 2 + (20 * GetSpecialStageId())
 		id += 2 * (Math.floorToInt(percent / 0.1)-1)
+		if (Archipelago.isLocationChecked(id) || !Archipelago.doesLocationExist(id))
+		{
+			return
+		}
+		
 		Archipelago.sendLocation(id)
 	}
 }
@@ -118,12 +128,7 @@ function void fn0616e6()
 			*/
 			
 			u32 id = Archipelago.getObjectId_xyPos(objA0.position.x.u16, objA0.position.y.u16)
-			for (u8 i = 0; i < GiantRingIDs.length(); i++)
-			{
-				if (GiantRingIDs[i] == id)
-					GiantRingIDs[i] = 0
-			}
-			
+			RemoveTrackedObject(id)
 			LogDec = id
 			Archipelago.sendLocation(id)
 			if (!enterRing)
@@ -157,6 +162,18 @@ function void fn0616e6()
 			}
 		}
 	}
+}
+
+//# address-hook(0x061794) end(0x0617b2)
+function void GiantRing.Grant50Rings()
+{
+	playSound(0xb3)
+
+	level.giantrings_clear |= (1 << objA0.subtype2c)		// Set Giant ring as collected
+	objA0.flags38 |= 0x20
+
+	JsonReader data = Archipelago.getSlotData()
+	addRings(data.getInteger("GiantRingRewardCount"))
 }
 
 //# address-hook(0x0085b0) end(0x0087b8)
@@ -207,9 +224,10 @@ function void fn0085b0()
 	#if STANDALONE
 		if (isGeneratedStageInMainGame)
 		{
-			LogDec = Archipelago.getDataInt("SpecialSeed")
+			JsonReader data = Archipelago.getSlotData()
+			LogDec = data.getInteger("SpecialSeed")
 			// Most of the "magic numbers" you see are more or less arbitrary numbers
-			u32 stageNumber = 0x13571113 + u32(Archipelago.getDataInt("SpecialSeed")) * 0x09070503 + global.next_bluespheres + global.sk_bluespheres * 8
+			u32 stageNumber = 0x13571113 + u32(data.getInteger("SpecialSeed")) * 0x09070503 + global.next_bluespheres + global.sk_bluespheres * 8
 
 			// Limit difficulty to a maximum value of 6, as higher ones tend to get kind of unfair if you can't just try them over and over again
 			u8 difficulty = 0xff

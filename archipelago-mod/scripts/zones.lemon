@@ -48,6 +48,7 @@ function bool Archipelago.AreAllZonesComplete(bool includeDeathEgg, bool include
 	}
 	
 	u8 count
+	JsonReader data = Archipelago.getSlotData()
 	for (u8 i = 0; i < ActSelect.ZONES.length(); i++)
 	{
 		string name = ActSelect.ZONES[i]
@@ -59,13 +60,13 @@ function bool Archipelago.AreAllZonesComplete(bool includeDeathEgg, bool include
 			
 		if (knuckles && name == "Sky Sanctuary Zone")
 		{
-			if (Archipelago.getDataInt("KnucklesGoal") == Goal.ALLZONES_SANCTUARY)
+			if (data.getInteger("KnucklesGoal") == Goal.ALLZONES_SANCTUARY)
 			{
 				continue
 			}
 		}
 		
-		if (!Archipelago.isZoneAllowed(name))
+		if (!Archipelago.IsZoneAllowed(name))
 			continue
 		
 		u8 zone = ActSelect.ZONE_INTERNAL_IDS[i]
@@ -75,23 +76,46 @@ function bool Archipelago.AreAllZonesComplete(bool includeDeathEgg, bool include
 		}
 	}
 
-	u8 totalZones = Archipelago.getDataInt("ZoneCount")
-	if (knuckles && Archipelago.getDataInt("KnucklesGoal") == Goal.ALLZONES_SANCTUARY)
+	u8 totalZones = data.getInteger("ZoneCount")
+	if (knuckles && data.getInteger("KnucklesGoal") == Goal.ALLZONES_SANCTUARY)
 	{
 		totalZones--
 	}
 	
-	if (!includeDeathEgg && Archipelago.isZoneAllowed("Death Egg Zone"))
+	if (!includeDeathEgg && Archipelago.IsZoneAllowed("Death Egg Zone"))
 	{
 		totalZones--
 	}
 	
-	if (!includeDoomsday && Archipelago.isZoneAllowed("Doomsday Zone"))
+	if (!includeDoomsday && Archipelago.IsZoneAllowed("Doomsday Zone"))
 	{
 		totalZones--
 	}
 
 	return count >= totalZones
+}
+
+function bool Archipelago.IsZoneAllowed(string zone)
+{
+	JsonReader data = Archipelago.getSlotData()
+	data.enterRoot()
+	if (zone == "Special Stage")
+	{
+		return data.getInteger("SpecialStageUnlockItemCount") > 0
+	}
+	
+	data.enterArray("ZonesAllowed")
+	for (u16 i = 0; data.hasIndex(i); i++)
+	{
+		if (data.getString(i) == zone)
+		{
+			data.enterRoot()
+			return true
+		}
+	}
+	
+	data.enterRoot()
+	return false
 }
 
 function bool Archipelago.IsZoneActComplete(u8 zone, u8 act, bool knuckles)
@@ -107,16 +131,6 @@ function bool Archipelago.IsZoneActComplete(u8 zone, u8 act, bool knuckles)
 	return (u8[addr] & (1 << act)) != 0
 }
 
-function bool Archipelago.isZoneAllowed(string zone)
-{
-	if (zone == "Special Stage")
-	{
-		return Archipelago.getDataInt("SpecialStageUnlockItemCount") > 0
-	}
-		
-	return base.Archipelago.isZoneAllowed(zone)
-}
-
 function bool Archipelago.IsZoneUnlocked(string zone, bool knuckles)
 {
 	if (!Archipelago.isConnected())
@@ -127,13 +141,15 @@ function bool Archipelago.IsZoneUnlocked(string zone, bool knuckles)
 		knuckles = false
 	}
 	
-	u8 unlockMode = Archipelago.getDataInt("ZoneUnlockMode")
+	JsonReader data = Archipelago.getSlotData()
+	data.enterRoot()
+	u8 unlockMode = data.getInteger("ZoneUnlockMode")
 	if (zone == "Doomsday Zone")
 	{
 		u8 emeralds = Archipelago.getItemCount(Item.CHAOS_EMERALD)
 		if (!knuckles)
 		{
-			u8 goal = Archipelago.getDataInt("Goal")
+			u8 goal = data.getInteger("Goal")
 			if (goal == Goal.DOOMSDAY)
 			{
 				return emeralds >= 7
@@ -158,7 +174,7 @@ function bool Archipelago.IsZoneUnlocked(string zone, bool knuckles)
 	{
 		return Archipelago.getItemCount(Item.PROGRESSIVE_SPECIAL_UNLOCK) > 0
 	}
-	else if (knuckles && zone == "Sky Sanctuary Zone" && Archipelago.getDataInt("KnucklesGoal") == Goal.ALLZONES_SANCTUARY)
+	else if (knuckles && zone == "Sky Sanctuary Zone" && data.getInteger("KnucklesGoal") == Goal.ALLZONES_SANCTUARY)
 	{
 		return Archipelago.AreAllZonesComplete(true, false, true)
 	}
@@ -166,28 +182,27 @@ function bool Archipelago.IsZoneUnlocked(string zone, bool knuckles)
 	{
 		u8 index = -1
 		string zones[14]
-		for (u8 i = 0; i < ActSelect.ZONES.length(); i++)
+		data.enterRoot()
+		data.enterArray("ZonesAllowed")
+		for (u8 i = 0; data.hasIndex(i); i++)
 		{
-			zones[i] = ActSelect.ZONES[i]
-		}
-		
-		if (knuckles && Archipelago.getDataInt("KnucklesGoal") == Goal.ALLZONES_SANCTUARY)
-		{
-			// Sky Sanctuary and Death Egg are swapped around for Knuckles in this case
-			zones[12] = "Death Egg Zone"	
-			zones[13] = "Sky Sanctuary Zone"
-		}
-		
-		for (u8 i = 0; i < 14; i++)
-		{
+			zones[i] = data.getString(i)
 			if (zones[i] == zone)
 			{
 				index = i
 				break
 			}
 		}
+
+		data.enterRoot()
+		u8 prevZoneId = -1
+		if (index > 0)
+		{
+			// previous zone needs to be completed first
+			prevZoneId = Archipelago.ZoneNameToId(zones[index-1])
+		}
 		
-		return index >= 0 && Archipelago.getItemCount(Item.PROGRESSIVE_ZONE_UNLOCK) >= index+1
+		return index >= 0 && (prevZoneId == -1 || Archipelago.GetZoneActsCompleted(prevZoneId, knuckles) >= Archipelago.GetZoneRequiredActCount(prevZoneId)) && Archipelago.getItemCount(Item.PROGRESSIVE_ZONE_UNLOCK) >= index+1
 	}
 	else if (zone == "Death Egg Zone")
 	{
@@ -197,7 +212,7 @@ function bool Archipelago.IsZoneUnlocked(string zone, bool knuckles)
 		}
 	}
 	
-	return Archipelago.getItem("Zone Unlock: " + zone)
+	return (Archipelago.getItemCount(Archipelago.ZoneNameToItem(zone)) > 0)
 }
 
 function string Archipelago.GetZoneNameInternal(u8 id)
@@ -232,4 +247,96 @@ function string Archipelago.GetZoneNameInternal(u8 id)
 		return "Doomsday Zone"
 	
 	return stringformat("UNKNOWN Zone [0x%x]", id)
+}
+
+function u8 Archipelago.ZoneNameToId(string zone)
+{
+	if (zone == "Angel Island Zone")
+		return 0x00
+	else if (zone == "Hydrocity Zone")
+		return 0x01
+	else if (zone == "Marble Garden Zone")
+		return 0x02
+	else if (zone == "Carnival Night Zone")
+		return 0x03
+	else if (zone == "IceCap Zone")
+		return 0x05
+	else if (zone == "Launch Base Zone")
+		return 0x06
+	else if (zone == "Mushroom Hill Zone")
+		return 0x07
+	else if (zone == "Flying Battery Zone")
+		return 0x04
+	else if (zone == "Sandopolis Zone")
+		return 0x08
+	else if (zone == "Lava Reef Zone")
+		return 0x09
+	else if (zone == "Hidden Palace Zone")
+		return 0x16
+	else if (zone == "Sky Sanctuary Zone")
+		return 0x0a
+	else if (zone == "Death Egg Zone")
+		return 0x0b
+	else if (zone == "Doomsday Zone")
+		return 0x0c
+		
+	return 0xFF
+}
+
+function u64 Archipelago.ZoneNameToItem(string zone)
+{
+	if (zone == "Angel Island Zone")
+	{
+		return Item.UNLOCK_ANGELISLAND
+	}
+	else if (zone == "Hydrocity Zone")
+	{
+		return Item.UNLOCK_HYDROCITY
+	}
+	else if (zone == "Marble Garden Zone")
+	{
+		return Item.UNLOCK_MARBLEGARDEN
+	}
+	else if (zone == "Carnival Night Zone")
+	{
+		return Item.UNLOCK_CARNIVALNIGHT
+	}
+	else if (zone == "IceCap Zone" || zone == "Ice Cap Zone")
+	{
+		return Item.UNLOCK_ICECAP
+	}
+	else if (zone == "Launch Base Zone")
+	{
+		return Item.UNLOCK_LAUNCHBASE
+	}
+	else if (zone == "Mushroom Hill Zone")
+	{
+		return Item.UNLOCK_MUSHROOMHILL
+	}
+	else if (zone == "Flying Battery Zone")
+	{
+		return Item.UNLOCK_FLYINGBATTERY
+	}
+	else if (zone == "Sandopolis Zone")
+	{
+		return Item.UNLOCK_SANDOPOLIS
+	}
+	else if (zone == "Lava Reef Zone")
+	{
+		return Item.UNLOCK_LAVAREEF
+	}
+	else if (zone == "Hidden Palace Zone")
+	{
+		return Item.UNLOCK_HIDDENPALACE
+	}
+	else if (zone == "Sky Sanctuary Zone")
+	{
+		return Item.UNLOCK_SKYSANCTUARY
+	}
+	else if (zone == "Death Egg Zone")
+	{
+		return Item.UNLOCK_DEATHEGG
+	}
+	
+	return -1
 }

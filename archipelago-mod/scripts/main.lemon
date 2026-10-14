@@ -5,39 +5,42 @@ include helpers
 include zones
 include compass
 include actselect_ap
+include monitor_ap
 
 constant u32 Addr.LastItemIndex = 0x880100
+constant u32 Addr.ItemEffectFlags = 0x880104
+constant u32 Addr.StoredLives = 0x880108
+constant u32 Addr.StoredRings = 0x880112
 constant u32 Addr.ZoneProgressStart = 0x880150
 constant u32 Addr.ZoneProgressStart.Knuckles = 0x880250
 
 // Items
-constant u32 Item.TENRINGS = 2020300001
-constant u32 Item.EXTRALIFE = 2020300002
-constant u32 Item.FIRESHIELD = 2020300003
-constant u32 Item.BUBBLESHIELD = 2020300004
-constant u32 Item.ELECTRICSHIELD = 2020300005
-constant u32 Item.INVINCIBILITY = 2020300006
-constant u32 Item.SPEEDSHOES = 2020300007
-constant u32 Item.SONIC = 2020300008
-constant u32 Item.TAILS = 2020300009
-constant u32 Item.KNUCKLES = 2020300010
-constant u32 Item.UNLOCK_ANGELISLAND = 2020300011
-constant u32 Item.UNLOCK_HYDROCITY = 2020300012
-constant u32 Item.UNLOCK_MARBLEGARDEN = 2020300013
-constant u32 Item.UNLOCK_CARNIVALNIGHT = 2020300014
-constant u32 Item.UNLOCK_ICECAP = 2020300015
-constant u32 Item.UNLOCK_LAUNCHBASE = 2020300016
-constant u32 Item.UNLOCK_MUSHROOMHILL = 2020300017
-constant u32 Item.UNLOCK_FLYINGBATTERY = 2020300018
-constant u32 Item.UNLOCK_SANDOPOLIS = 2020300019
-constant u32 Item.UNLOCK_LAVAREEF = 2020300020
-constant u32 Item.UNLOCK_HIDDENPALACE = 2020300021
-constant u32 Item.UNLOCK_SKYSANCTUARY = 2020300022
-constant u32 Item.UNLOCK_DEATHEGG = 2020300023
-constant u32 Item.PROGRESSIVE_ZONE_UNLOCK = 2020300024
-constant u32 Item.PROGRESSIVE_SPECIAL_UNLOCK = 2020300025
-constant u32 Item.CHAOS_EMERALD = 2020300026
-
+constant u64 Item.TENRINGS = 2020300001
+constant u64 Item.EXTRALIFE = 2020300002
+constant u64 Item.FIRESHIELD = 2020300003
+constant u64 Item.BUBBLESHIELD = 2020300004
+constant u64 Item.ELECTRICSHIELD = 2020300005
+constant u64 Item.INVINCIBILITY = 2020300006
+constant u64 Item.SPEEDSHOES = 2020300007
+constant u64 Item.SONIC = 2020300008
+constant u64 Item.TAILS = 2020300009
+constant u64 Item.KNUCKLES = 2020300010
+constant u64 Item.UNLOCK_ANGELISLAND = 2020300011
+constant u64 Item.UNLOCK_HYDROCITY = 2020300012
+constant u64 Item.UNLOCK_MARBLEGARDEN = 2020300013
+constant u64 Item.UNLOCK_CARNIVALNIGHT = 2020300014
+constant u64 Item.UNLOCK_ICECAP = 2020300015
+constant u64 Item.UNLOCK_LAUNCHBASE = 2020300016
+constant u64 Item.UNLOCK_MUSHROOMHILL = 2020300017
+constant u64 Item.UNLOCK_FLYINGBATTERY = 2020300018
+constant u64 Item.UNLOCK_SANDOPOLIS = 2020300019
+constant u64 Item.UNLOCK_LAVAREEF = 2020300020
+constant u64 Item.UNLOCK_HIDDENPALACE = 2020300021
+constant u64 Item.UNLOCK_SKYSANCTUARY = 2020300022
+constant u64 Item.UNLOCK_DEATHEGG = 2020300023
+constant u64 Item.PROGRESSIVE_ZONE_UNLOCK = 2020300024
+constant u64 Item.PROGRESSIVE_SPECIAL_UNLOCK = 2020300025
+constant u64 Item.CHAOS_EMERALD = 2020300026
 
 // Option values (from the apworld)
 constant u8 Goal.ALLZONES = 0
@@ -60,26 +63,60 @@ constant u8 KnucklesStoryMode.EXCLUSIVE_TAILS = 4
 // Mod options
 global u8 option.ap.checkCompass
 global u8 option.ap.deathLink
+global u8 option.ap.monitorTest
 
 // Other variables
-global u32 GiantRingIDs[16]
+global u32 TrackedObjectIDs[255]
+global u16 MonitorYPositions[255]
+global bool HiddenMonitors[255]
 global bool DeathLinked = false
 
 function void Init()
 {
 	base.Init()
-	ResetGiantRingIDs()
-	Archipelago.start()
+	ResetTrackedObjectIDs()
+	if (!Archipelago.isConnected())
+	{
+		Archipelago.start()
+	}
+	else
+	{
+		LoadPersistent()
+	}
 }
 
 function void Archipelago.OnConnected()
 {
 	System.writeDisplayLine("Connected to Archipelago!")
+	LoadPersistent()
+	if (global.game_mode == 0x4c || global.game_mode == 0x1c)
+	{
+		// Get out of the data select/level select screen if we're in there somehow
+		Game.returnToMainMenu()
+	}
 }
 
 function void Archipelago.OnDisconnected()
 {
 	System.writeDisplayLine("Lost connection to Archipelago server")
+}
+
+function void LoadPersistent()
+{
+	string seedName = Archipelago.getSeedName()
+	System.loadPersistentData(Addr.LastItemIndex, 4, "s3air_archipelago", stringformat("LastItemIndex_%s", seedName), false)
+	System.loadPersistentData(Addr.ItemEffectFlags, 4, "s3air_archipelago", stringformat("ItemEffectFlags_%s", seedName), false)
+	System.loadPersistentData(Addr.StoredRings, 4, "s3air_archipelago", stringformat("StoredRings_%s", seedName), false)
+	System.loadPersistentData(Addr.StoredLives, 4, "s3air_archipelago", stringformat("StoredLives_%s", seedName), false)
+}
+
+function void SavePersistent()
+{
+	string seedName = Archipelago.getSeedName()
+	System.savePersistentData(Addr.LastItemIndex, 4, "s3air_archipelago", stringformat("LastItemIndex_%s", seedName), false)
+	System.savePersistentData(Addr.ItemEffectFlags, 4, "s3air_archipelago", stringformat("ItemEffectFlags_%s", seedName), false)
+	System.savePersistentData(Addr.StoredRings, 4, "s3air_archipelago", stringformat("StoredRings_%s", seedName), false)
+	System.savePersistentData(Addr.StoredLives, 4, "s3air_archipelago", stringformat("StoredLives_%s", seedName), false)
 }
 
 function void Game.onZoneActCompleted(u16 zoneAndAct)
@@ -120,72 +157,48 @@ function void Game.onZoneActCompleted(u16 zoneAndAct)
 	Archipelago.CheckGoalCompletion()
 }
 
-function void Archipelago.OnNewItem(string item, u64 id)
+function void Archipelago.OnNewItem(string item, u64 id, u64 flags)
 {
-	/*
-	if (s32[Addr.LastItemIndex] == 0)
+	System.writeDisplayLine(stringformat("Got Item: %s", item))
+	if (item == "Invincibility")
 	{
-		string seed = Archipelago.getSeedName()
-		System.loadPersistentData(Addr.LastItemIndex, 4, "s3air_archipelago", stringformat("LastItemIndex_%s", seed), false)
-		if (s32[Addr.LastItemIndex] == 0)
-		{
-			// just so we don't keep loading this repeatedly if it's uninitialized
-			s32[Addr.LastItemIndex] = -1
-		}
+		u32[Addr.ItemEffectFlags] |= char.bonus.INVINCIBLE
 	}
-	
-	if (index <= s32[Addr.LastItemIndex])
+	else if (item == "Speed Shoes")
 	{
-		return
+		u32[Addr.ItemEffectFlags] |= char.bonus.SPEED_UP
 	}
-	*/
-	
-	//System.writeDisplayLine(stringformat("Got Item: %s", item))
-	u64 itemEffectFlags = Archipelago.getDataInt("ItemEffectFlags")
-	u32 storedRings = Archipelago.getDataInt("StoredRings")
-	u16 storedLives = Archipelago.getDataInt("StoredLives")
-	if (item == "Invincibility") 
+	else if (item == "Fire Shield")
 	{
-		itemEffectFlags |= char.bonus.INVINCIBLE
+		u32[Addr.ItemEffectFlags] &= ~char.bonus.ALL_SHIELDS
+		u32[Addr.ItemEffectFlags] |= char.bonus.SHIELD_FIRE
 	}
-	else if (item == "Speed Shoes") 
+	else if (item == "Bubble Shield")
 	{
-		itemEffectFlags |= char.bonus.SPEED_UP
+		u32[Addr.ItemEffectFlags] &= ~char.bonus.ALL_SHIELDS
+		u32[Addr.ItemEffectFlags] |= char.bonus.SHIELD_BUBBLE
 	}
-	else if (item == "Fire Shield") 
+	else if (item == "Electric Shield")
 	{
-		itemEffectFlags &= ~char.bonus.ALL_SHIELDS
-		itemEffectFlags |= char.bonus.SHIELD_FIRE
+		u32[Addr.ItemEffectFlags] &= ~char.bonus.ALL_SHIELDS
+		u32[Addr.ItemEffectFlags] |= char.bonus.SHIELD_LIGHTNING
 	}
-	else if (item == "Bubble Shield") 
+	else if (item == "10 Rings")
 	{
-		itemEffectFlags &= ~char.bonus.ALL_SHIELDS
-		itemEffectFlags |= char.bonus.SHIELD_BUBBLE
+		u32[Addr.StoredRings] += 10
 	}
-	else if (item == "Electric Shield") 
+	else if (item == "Extra Life")
 	{
-		itemEffectFlags &= ~char.bonus.ALL_SHIELDS
-		itemEffectFlags |= char.bonus.SHIELD_LIGHTNING
+		u32[Addr.StoredLives]++
 	}
-	else if (item == "10 Rings") 
-	{
-		storedRings += 10
-	}
-	else if (item == "Extra Life") 
-	{
-		storedLives++
-	}
-	
-	Archipelago.setDataInt("ItemEffectFlags", itemEffectFlags)
-	Archipelago.setDataInt("StoredRings", storedRings)
-	Archipelago.setDataInt("StoredLives", storedLives)
 }
 
-function void Archipelago.OnReceivedItems(s32 highestIndex, bool progression)
+function void Archipelago.OnPostReceivedItems(s32 highestIndex, bool progression)
 {
 	string seed = Archipelago.getSeedName()
 	if (s32[Addr.LastItemIndex] == 0)
 	{
+		// just in case
 		System.loadPersistentData(Addr.LastItemIndex, 4, "s3air_archipelago", stringformat("LastItemIndex_%s", seed), false)
 	}
 	
@@ -200,6 +213,7 @@ function void Archipelago.OnReceivedItems(s32 highestIndex, bool progression)
 	}
 	
 	Archipelago.UpdateEmeraldCount()
+	SavePersistent()
 }
 
 global u8 UpdateDelay = 10
@@ -231,50 +245,50 @@ function void OnCharacterUpdate(u8 charId)
 		return
 	}
 	
+	bool save = false
 	// Process items with instant effects
 	// Rings
-	u32 storedRings = Archipelago.getDataInt("StoredRings")
-	if (storedRings > 0)
+	if (u32[Addr.StoredRings] > 0)
 	{
-		addRings(storedRings)
-		Archipelago.setDataInt("StoredRings", 0)
+		addRings(u32[Addr.StoredRings])
+		u32[Addr.StoredRings] = 0
+		save = true
 	}
 	
 	// Lives
-	u32 storedLives = Archipelago.getDataInt("StoredLives")
-	Archipelago.setDataInt("StoredLives", 0)
-	while (storedLives > 0)
+	while (u32[Addr.StoredLives] > 0)
 	{
 		gainExtraLife()
-		storedLives--
+		u32[Addr.StoredLives]--
+		save = true
 	}
 	
-	u64 itemEffectFlags = Archipelago.getDataInt("ItemEffectFlags")
-	if (itemEffectFlags)
+	if (u32[Addr.ItemEffectFlags])
 	{
-		if (itemEffectFlags & char.bonus.INVINCIBLE)
+		save = true
+		if (u32[Addr.ItemEffectFlags] & char.bonus.INVINCIBLE)
 		{
 			Archipelago.ApplyInvincibility()
 		}
 		
-		if (itemEffectFlags & char.bonus.SPEED_UP)
+		if (u32[Addr.ItemEffectFlags] & char.bonus.SPEED_UP)
 		{
 			Archipelago.ApplySpeedUp()
 		}
 		
 		if ((char.bonus_effect & char.bonus.ANY_SHIELD) == 0)
 		{
-			if (itemEffectFlags & char.bonus.SHIELD_FIRE)
+			if (u32[Addr.ItemEffectFlags] & char.bonus.SHIELD_FIRE)
 			{
 				fn0611d6()
 				char.bonus_effect |= char.bonus.ANY_SHIELD
 			}
-			else if (itemEffectFlags & char.bonus.SHIELD_BUBBLE)
+			else if (u32[Addr.ItemEffectFlags] & char.bonus.SHIELD_BUBBLE)
 			{
 				fn061200()
 				char.bonus_effect |= char.bonus.ANY_SHIELD
 			}
-			else if (itemEffectFlags & char.bonus.SHIELD_LIGHTNING)
+			else if (u32[Addr.ItemEffectFlags] & char.bonus.SHIELD_LIGHTNING)
 			{
 				fn06122a()
 				char.bonus_effect |= char.bonus.ANY_SHIELD
@@ -286,7 +300,12 @@ function void OnCharacterUpdate(u8 charId)
 			addRings(5)
 		}
 		
-		Archipelago.setDataInt("ItemEffectFlags", 0)
+		u32[Addr.ItemEffectFlags] = 0
+	}
+	
+	if (save)
+	{
+		SavePersistent()
 	}
 }
 
@@ -311,6 +330,8 @@ function void Character.BaseUpdate.Knuckles()
 	OnCharacterUpdate(CHARACTER_KNUCKLES)
 }
 
+// TODO: make deathlink actually work
+/*
 function void Archipelago.OnDeathLink(float time, string cause, string source)
 {
 	float lastDeathTime = Archipelago.getDataFloat("LastDeathTime")
@@ -348,8 +369,9 @@ function void Character.Die()
 	return
 	if (!DeathLinked && Archipelago.isConnected())
 	{
-		//Archipelago.sendDeath()
+		Archipelago.sendDeath()
 	}
 	
 	DeathLinked = false
 }
+*/

@@ -11,29 +11,30 @@ function u32 Game.getSetting(u32 settingId)
 function void TriggerNextZone(u16 zoneAndAct)
 {
 	u8 zone = zoneAndAct >> 8
-	Log = zone
+	JsonReader data = Archipelago.getSlotData()
 	if (zone == 0x0a || zoneAndAct == 0x1600 || zone == 0x0d && global.zone == 0x0c || zoneAndAct == 0x1601 && isMainCharacter(CHARACTER_KNUCKLES))
 	{
 		// Some levels don't trigger this callback
 		Game.onZoneActCompleted(global.zone_act.apparent)
 	}
 	
-	if (Archipelago.IsKnucklesGoalNecessary() && Archipelago.getDataInt("KnucklesGoal") != Goal.ALLZONES_SANCTUARY && isMainCharacter(CHARACTER_KNUCKLES) && zoneAndAct == 0x0a01)
+	if (Archipelago.IsKnucklesGoalNecessary() && data.getInteger("KnucklesGoal") != Goal.ALLZONES_SANCTUARY && isMainCharacter(CHARACTER_KNUCKLES) && zoneAndAct == 0x0a01)
 	{
 		// If Knuckles transitioning into Sky Sanctuary, don't go to the boss version if it's not our goal
 		zoneAndAct = 0x0a00
 	}
 	
 	// Don't prevent entry to some levels (LRZ boss, outro, etc)
-	bool invalidAct = zoneAndAct != 0x1600 && zoneAndAct != 0x1700 && zoneAndAct != 0x0d01 && zoneAndAct != 0x0d00
-	if (invalidAct && !Archipelago.IsZoneUnlocked(Archipelago.GetZoneNameInternal(zone), isMainCharacter(CHARACTER_KNUCKLES)))
+	bool validAct = zoneAndAct != 0x1600 && zoneAndAct != 0x1700 && zoneAndAct != 0x0d01 && zoneAndAct != 0x0d00
+	string zoneName = Archipelago.GetZoneNameInternal(zone)
+	if (validAct && (!Archipelago.IsZoneUnlocked(zoneName, isMainCharacter(CHARACTER_KNUCKLES)) || !Archipelago.IsZoneAllowed(zoneName)))
 	{
 		Game.returnToMainMenu()
-		System.writeDisplayLine("The next zone is locked, so you were returned to the main menu.")
+		System.writeDisplayLine("The next zone was locked, so you were returned to the main menu.")
 		return
 	}
 	
-	ResetGiantRingIDs()
+	ResetTrackedObjectIDs()
 	base.TriggerNextZone(zoneAndAct)
 }
 
@@ -62,6 +63,13 @@ function void LevelSelect()
 	}
 	
 	base.LevelSelect()
+}
+
+function void DataSelect.setup()
+{
+	Game.returnToMainMenu()
+	System.writeDisplayLine("Use the Act Select menu instead.")
+	//base.DataSelect.setup()
 }
 
 //# address-hook(0x009b62) end(0x009d1c)

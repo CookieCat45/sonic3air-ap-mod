@@ -1,0 +1,54 @@
+//# address-hook(0x01d716) end(0x01d7b6)
+function void MonitorIntact.Opening()
+{
+	base.MonitorIntact.Opening()
+	if (!Archipelago.GetMonitorSanityMode())
+	{
+		return
+	}
+	
+	u8 subtype = objA0.subtype2c
+	subtype &= ~0x10
+	u32 id = Archipelago.getObjectId_Monitor(objA0.position.x.u16, subtype)
+	bool hidden = false
+	for (u8 i = 0; i < TrackedObjectIDs.length(); i++)
+	{
+		if (TrackedObjectIDs[i] == id && HiddenMonitors[i])
+		{
+			hidden = true
+			break
+		}
+	}
+	
+	if (hidden)
+	{
+		LogDec = stringformat("Hidden monitor = %d", hidden)
+	}
+	
+	LogDec = stringformat("Monitor ID: %d", id)
+	Log = objA0.position.x.u16
+	RemoveTrackedObject(id)
+	Archipelago.sendLocation(id)
+}
+
+function u64 Monitor.getIconSpriteKey(u8 type)
+{
+	if (Archipelago.GetMonitorSanityMode())
+	{
+		return "monitor_icon_ap"
+	}
+	
+	return base.Monitor.getIconSpriteKey(type)
+}
+
+function u8 Archipelago.GetMonitorSanityMode()
+{
+	return option.ap.monitorTest
+}
+
+function u32 Archipelago.getObjectId_Monitor(u16 x, u8 subtype)
+{
+	subtype &= ~0x10
+	u32 id = u32((x << 16) | subtype)
+	return id
+}
