@@ -36,7 +36,6 @@ function void ResetTrackedObjectIDs()
 	{
 		TrackedObjectIDs[i] = 0
 		MonitorYPositions[i] = 0
-		HiddenMonitors[i] = false
 	}
 }
 
@@ -48,7 +47,6 @@ function void RemoveTrackedObject(u32 id)
 		{
 			TrackedObjectIDs[i] = 0
 			MonitorYPositions[i] = 0
-			HiddenMonitors[i] = false
 		}
 	}
 }
@@ -61,20 +59,20 @@ function void LevelObjectTableBuilder.buildObjects()
 
 function void LevelObjectTableBuilder.addObject(u16 px, u16 py, u8 type, u8 subtype, u8 flags)
 {
-	// Giant Ring, Monitor, Hidden Monitor
-	if (type == 0x85 || type == 0x01 || type == 0x80)
+	// Giant Ring, Monitor
+	if (type == 0x85 || type == 0x01)
 	{
 		u32 id = 0
 		if (type == 0x85)
 		{
 			id = Archipelago.getObjectId_xyPos(px, py)
 		}
-		else if (type == 0x01 || type == 0x80)
+		else if (type == 0x01)
 		{
 			id = Archipelago.getObjectId_Monitor(px, subtype)
 		}
 		
-		if (!Archipelago.isLocationChecked(id) && (Archipelago.doesLocationExist(id) || Archipelago.GetMonitorSanityMode()))
+		if (!Archipelago.isLocationChecked(id) && (Archipelago.doesLocationExist(id) || type == 0x01 && option.ap.monitorTest))
 		{
 			for (u8 i = 0; i < TrackedObjectIDs.length(); i++)
 			{
@@ -86,12 +84,6 @@ function void LevelObjectTableBuilder.addObject(u16 px, u16 py, u8 type, u8 subt
 						// stupid hack for monitors - track the Y position in a separate array
 						// since we don't use the Y position for the location ID as it can change
 						MonitorYPositions[i] = py
-					}
-					else if (type == 0x80)
-					{
-						// keep track of hidden monitors
-						// we don't need the Y position since the compass doesn't track hidden monitors
-						HiddenMonitors[i] = true
 					}
 					
 					break

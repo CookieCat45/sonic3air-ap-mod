@@ -40,6 +40,24 @@ function u8 Archipelago.GetZoneRequiredActCount(u8 zone)
 	return 2
 }
 
+function string Archipelago.GetZoneNameByListIndex(u8 index)
+{
+	JsonReader data = Archipelago.getSlotData()
+	data.enterArray("ZonesAllowed")
+	for (u8 i = 0; data.hasIndex(i); i++)
+	{
+		if (i == index)
+		{
+			string name = data.getString(i)
+			data.enterRoot()
+			return name
+		}
+	}
+	
+	data.enterRoot()
+	return ""
+}
+
 function bool Archipelago.AreAllZonesComplete(bool includeDeathEgg, bool includeDoomsday, bool knuckles)
 {
 	if (!Archipelago.IsKnucklesGoalNecessary())

@@ -68,7 +68,6 @@ global u8 option.ap.monitorTest
 // Other variables
 global u32 TrackedObjectIDs[255]
 global u16 MonitorYPositions[255]
-global bool HiddenMonitors[255]
 global bool DeathLinked = false
 
 function void Init()

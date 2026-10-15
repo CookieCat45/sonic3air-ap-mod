@@ -1,44 +1,49 @@
 //# address-hook(0x01d716) end(0x01d7b6)
 function void MonitorIntact.Opening()
 {
-	base.MonitorIntact.Opening()
-	if (!Archipelago.GetMonitorSanityMode())
-	{
-		return
-	}
-	
 	u8 subtype = objA0.subtype2c
 	subtype &= ~0x10
 	u32 id = Archipelago.getObjectId_Monitor(objA0.position.x.u16, subtype)
-	bool hidden = false
-	for (u8 i = 0; i < TrackedObjectIDs.length(); i++)
-	{
-		if (TrackedObjectIDs[i] == id && HiddenMonitors[i])
-		{
-			hidden = true
-			break
-		}
-	}
-	
-	if (hidden)
-	{
-		LogDec = stringformat("Hidden monitor = %d", hidden)
-	}
-	
 	LogDec = stringformat("Monitor ID: %d", id)
-	Log = objA0.position.x.u16
 	RemoveTrackedObject(id)
-	Archipelago.sendLocation(id)
+	if (Archipelago.IsAPMonitor(objA0.position.x.u16, objA0.subtype2c))
+	{
+		Archipelago.sendLocation(id)
+		objA0.subtype2c = 0xFF
+	}
+
+	base.MonitorIntact.Opening()
+}
+
+function u8 Monitor.getRandomizedType(u8 type, bool hiddenMonitor)
+{
+	if (Archipelago.IsAPMonitor(objA0.position.x.u16, type))
+	{
+		return type
+	}
+	
+	return base.Monitor.getRandomizedType(type, hiddenMonitor)
 }
 
 function u64 Monitor.getIconSpriteKey(u8 type)
 {
-	if (Archipelago.GetMonitorSanityMode())
+	if (Archipelago.IsAPMonitor(objA0.position.x.u16, type))
 	{
 		return "monitor_icon_ap"
 	}
 	
 	return base.Monitor.getIconSpriteKey(type)
+}
+
+function bool Archipelago.IsAPMonitor(u16 px, u8 type)
+{
+	if (!Archipelago.GetMonitorSanityMode())
+	{
+		return false
+	}
+	
+	u32 id = Archipelago.getObjectId_Monitor(px, type)
+	return Archipelago.doesLocationExist(id) && !Archipelago.isLocationChecked(id)
 }
 
 function u8 Archipelago.GetMonitorSanityMode()
