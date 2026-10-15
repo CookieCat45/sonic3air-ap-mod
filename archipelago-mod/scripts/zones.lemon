@@ -338,5 +338,5 @@ function u64 Archipelago.ZoneNameToItem(string zone)
 		return Item.UNLOCK_DEATHEGG
 	}
 	
-	return -1
+	return 0xFF
 }
