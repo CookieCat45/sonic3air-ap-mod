@@ -225,7 +225,7 @@ function void fn0085b0()
 		if (isGeneratedStageInMainGame)
 		{
 			JsonReader data = Archipelago.getSlotData()
-			LogDec = data.getInteger("SpecialSeed")
+			LogDec = stringformat("Special Stage Random Seed = %d", data.getInteger("SpecialSeed"))
 			// Most of the "magic numbers" you see are more or less arbitrary numbers
 			u32 stageNumber = 0x13571113 + u32(data.getInteger("SpecialSeed")) * 0x09070503 + global.next_bluespheres + global.sk_bluespheres * 8
 

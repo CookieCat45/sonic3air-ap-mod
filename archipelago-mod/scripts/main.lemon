@@ -6,11 +6,14 @@ include zones
 include compass
 include actselect_ap
 include monitor_ap
+include traps
 
 constant u32 Addr.LastItemIndex = 0x880100
 constant u32 Addr.ItemEffectFlags = 0x880104
 constant u32 Addr.StoredLives = 0x880108
 constant u32 Addr.StoredRings = 0x880112
+constant u32 Addr.SpringTrapCount = 0x880116
+constant u32 Addr.MissileTrapCount = 0x880120
 constant u32 Addr.ZoneProgressStart = 0x880150
 constant u32 Addr.ZoneProgressStart.Knuckles = 0x880250
 
@@ -41,6 +44,8 @@ constant u64 Item.UNLOCK_DEATHEGG = 2020300023
 constant u64 Item.PROGRESSIVE_ZONE_UNLOCK = 2020300024
 constant u64 Item.PROGRESSIVE_SPECIAL_UNLOCK = 2020300025
 constant u64 Item.CHAOS_EMERALD = 2020300026
+constant u64 Item.SPRING_TRAP = 2020300027
+constant u64 Item.MISSILE_TRAP = 2020300028
 
 // Option values (from the apworld)
 constant u8 Goal.ALLZONES = 0
@@ -69,6 +74,11 @@ global u8 option.ap.monitorTest
 global u32 TrackedObjectIDs[255]
 global u16 MonitorYPositions[255]
 global bool DeathLinked = false
+global bool HasDrowned = false
+constant u8 SPRING_TRAP_TIME = 12
+constant u8 MISSILE_TRAP_TIME = 10
+global u8 SpringTrapTimer = SPRING_TRAP_TIME
+global u8 MissileTrapTimer = MISSILE_TRAP_TIME
 
 function void Init()
 {
@@ -93,11 +103,24 @@ function void Archipelago.OnConnected()
 		// Get out of the data select/level select screen if we're in there somehow
 		Game.returnToMainMenu()
 	}
+	
+	JsonReader data = Archipelago.getSlotData()
+	if (data.getInteger("DeathLink"))
+	{
+		Archipelago.addTag("DeathLink")
+	}
 }
 
 function void Archipelago.OnDisconnected()
 {
 	System.writeDisplayLine("Lost connection to Archipelago server")
+}
+
+function void Standalone.onLevelStart()
+{
+	base.Standalone.onLevelStart()
+	HasDrowned = false
+	DeathLinked = false
 }
 
 function void LoadPersistent()
@@ -107,6 +130,8 @@ function void LoadPersistent()
 	System.loadPersistentData(Addr.ItemEffectFlags, 4, "s3air_archipelago", stringformat("ItemEffectFlags_%s", seedName), false)
 	System.loadPersistentData(Addr.StoredRings, 4, "s3air_archipelago", stringformat("StoredRings_%s", seedName), false)
 	System.loadPersistentData(Addr.StoredLives, 4, "s3air_archipelago", stringformat("StoredLives_%s", seedName), false)
+	System.loadPersistentData(Addr.SpringTrapCount, 4, "s3air_archipelago", stringformat("SpringTrapCount_%s", seedName), false)
+	System.loadPersistentData(Addr.MissileTrapCount, 4, "s3air_archipelago", stringformat("MissileTrapCount_%s", seedName), false)
 }
 
 function void SavePersistent()
@@ -116,6 +141,8 @@ function void SavePersistent()
 	System.savePersistentData(Addr.ItemEffectFlags, 4, "s3air_archipelago", stringformat("ItemEffectFlags_%s", seedName), false)
 	System.savePersistentData(Addr.StoredRings, 4, "s3air_archipelago", stringformat("StoredRings_%s", seedName), false)
 	System.savePersistentData(Addr.StoredLives, 4, "s3air_archipelago", stringformat("StoredLives_%s", seedName), false)
+	System.savePersistentData(Addr.SpringTrapCount, 4, "s3air_archipelago", stringformat("SpringTrapCount_%s", seedName), false)
+	System.savePersistentData(Addr.MissileTrapCount, 4, "s3air_archipelago", stringformat("MissileTrapCount_%s", seedName), false)
 }
 
 function void Game.onZoneActCompleted(u16 zoneAndAct)
@@ -150,8 +177,8 @@ function void Game.onZoneActCompleted(u16 zoneAndAct)
 	System.loadPersistentData(addr, 4, "s3air_archipelago", stringformat("ZoneProgress%d_%d_%s", zone, knuckles, seed), false)
 	u8[addr] |= 1 << act
 	System.savePersistentData(addr, 4, "s3air_archipelago", stringformat("ZoneProgress%d_%d_%s", zone, knuckles, seed), false)
-	u64 id = Archipelago.getZoneActIdOffset64(zone, act)
-	LogDec = stringformat("%s Act %d: %d", Archipelago.GetZoneNameInternal(zone), act, id)
+	u64 id = Archipelago.getZoneActIdOffset(zone, act)
+	LogDec = stringformat("%s Act %d: %d", Archipelago.ZoneIdToName(zone), act, id)
 	Archipelago.sendLocation(id)
 	Archipelago.CheckGoalCompletion()
 }
@@ -189,6 +216,14 @@ function void Archipelago.OnNewItem(string item, u64 id, u64 flags)
 	else if (item == "Extra Life")
 	{
 		u32[Addr.StoredLives]++
+	}
+	else if (item == "Spring Trap")
+	{
+		u32[Addr.SpringTrapCount]++
+	}
+	else if (item == "Missile Trap")
+	{
+		u32[Addr.MissileTrapCount]++
 	}
 }
 
@@ -302,10 +337,39 @@ function void OnCharacterUpdate(u8 charId)
 		u32[Addr.ItemEffectFlags] = 0
 	}
 	
+	if (u32[Addr.SpringTrapCount] > 0)
+	{
+		SpringTrapTimer--
+		if (SpringTrapTimer <= 0)
+		{
+			DoSpringTrap()
+			u32[Addr.SpringTrapCount]--
+			SpringTrapTimer = SPRING_TRAP_TIME
+			save = true
+		}
+	}
+	
+	if (u32[Addr.MissileTrapCount] > 0)
+	{
+		MissileTrapTimer--
+		if (MissileTrapTimer <= 0)
+		{
+			DoMissileTrap()
+			u32[Addr.MissileTrapCount]--
+			MissileTrapTimer = MISSILE_TRAP_TIME
+			save = true
+		}
+	}
+	
 	if (save)
 	{
 		SavePersistent()
 	}
+}
+
+function bool Standalone.onWriteToSpriteTable(s16 px, s16 py, u16 renderQueue)
+{
+	return base.Standalone.onWriteToSpriteTable(px, py, renderQueue)
 }
 
 //# address-hook(0x010a94) end(0x010ae8)
@@ -329,25 +393,57 @@ function void Character.BaseUpdate.Knuckles()
 	OnCharacterUpdate(CHARACTER_KNUCKLES)
 }
 
-// TODO: make deathlink actually work
-/*
-function void Archipelago.OnDeathLink(float time, string cause, string source)
+function void Archipelago.onBounced()
 {
-	float lastDeathTime = Archipelago.getDataFloat("LastDeathTime")
-	if (time > lastDeathTime && !DeathLinked)
+	if (!DeathLinked && global.game_mode == 0x0c && Archipelago.hasTag("DeathLink"))
 	{
-		DeathLinked = true
-		Archipelago.setDataFloat("LastDeathTime", time)
+		u32 backupA0 = A0
+		A0 = 0xffffb000
+		if (char.base_state == base_state.DIED)
+		{
+			A0 = backupA0
+			return
+		}
+		
+		JsonReader data = Archipelago.getLastPacket()
+		if (data.enterArray("tags"))
+		{
+			for (u8 i = 0; data.hasIndex(i); i++)
+			{
+				if (data.getString(i) == "DeathLink")
+				{
+					DeathLinked = true
+					break
+				}
+			}
+		}
+		
+		data.enterRoot()
+		if (!DeathLinked)
+		{
+			return
+		}
+		
+		data.enterObject("data")
+		string source = data.getString("source")
+		string cause = data.getString("cause")
+		data.enterRoot()
+		if (source == Archipelago.getPlayerName())
+		{
+			DeathLinked = false
+			return
+		}
+		
 		Character.Die()
+		A0 = backupA0
 		string msg = ""
 		if (source != "")
 		{
 			msg += "You were killed by " + source
-		}
-		
-		if (cause != "")
-		{
-			msg += " (Reason: " + cause + ")"
+			if (cause != "")
+			{
+				msg += " (Reason: " + cause + ")"
+			}
 		}
 		
 		if (msg != "")
@@ -356,21 +452,50 @@ function void Archipelago.OnDeathLink(float time, string cause, string source)
 		}
 		else
 		{
-			System.writeDisplayLine("You were killed by an unknown player in the multiworld")
+			System.writeDisplayLine("You were killed by someone in the multiworld")
 		}
 	}
 }
 
-//# address-hook(0x010366) end(0x01036c)
-function void Character.Die()
+function void Character.UpdateDrownedState.shared()
 {
-	base.Character.Die()
-	return
-	if (!DeathLinked && Archipelago.isConnected())
+	base.Character.UpdateDrownedState.shared()
+	if (isMainCharacter(char.character))
 	{
-		Archipelago.sendDeath()
+		if (!HasDrowned)
+		{
+			HasDrowned = true
+			SendDeath()
+		}
 	}
-	
-	DeathLinked = false
 }
-*/
+
+//# address-hook(0x01036e) end(0x0103b8)
+function void Character.Die_internal()
+{
+	base.Character.Die_internal()
+	if (A0 == 0xffffb000)
+	{
+		SendDeath()
+	}
+}
+
+function void SendDeath()
+{
+	if (DeathLinked || !Archipelago.isConnected())
+		return
+	
+	if (!Archipelago.hasTag("DeathLink"))
+		return
+	
+	string name = Archipelago.getPlayerName()
+	u64 time = Archipelago.getTime()
+	if (HasDrowned)
+	{
+		Archipelago.sendBounce(stringformat("{\"cmd\":\"Bounce\",\"data\":{\"time\":%d,\"source\":\"%s\",\"cause\":\"%s couldn't find oxygen\"},\"tags\":[\"DeathLink\"]}", time, name, name))
+	}
+	else
+	{
+		Archipelago.sendBounce(stringformat("{\"cmd\":\"Bounce\",\"data\":{\"time\":%d,\"source\":\"%s\"},\"tags\":[\"DeathLink\"]}", time, name))
+	}
+}

@@ -1,9 +1,4 @@
-function u64 Archipelago.getZoneActIdOffset(u8 zone, u8 act)
-{
-	return ((zone+1) * 1000) + (act * 500)
-}
-
-function u64 Archipelago.getZoneActIdOffset64(u64 zone, u64 act)
+function u64 Archipelago.getZoneActIdOffset(u64 zone, u64 act)
 {
 	return ((zone+1) * 1000) + (act * 500)
 }
@@ -164,10 +159,10 @@ function bool Archipelago.IsZoneUnlocked(string zone, bool knuckles)
 	u8 unlockMode = data.getInteger("ZoneUnlockMode")
 	if (zone == "Doomsday Zone")
 	{
-		u8 emeralds = Archipelago.getItemCount(Item.CHAOS_EMERALD)
-		if (!knuckles)
+		if (!knuckles || data.getInteger("KnucklesGoal") != Goal.ALLZONES_SANCTUARY)
 		{
-			u8 goal = data.getInteger("Goal")
+			u8 goal = knuckles ? data.getInteger("KnucklesGoal") : data.getInteger("Goal")
+			u8 emeralds = Archipelago.getItemCount(Item.CHAOS_EMERALD)
 			if (goal == Goal.DOOMSDAY)
 			{
 				return emeralds >= 7
@@ -178,11 +173,11 @@ function bool Archipelago.IsZoneUnlocked(string zone, bool knuckles)
 			}
 			else if (goal == Goal.ALLZONES_DOOMSDAY)
 			{
-				return Archipelago.AreAllZonesComplete(true, false, false) && emeralds >= 7
+				return Archipelago.AreAllZonesComplete(true, false, knuckles) && emeralds >= 7
 			}
 			else if (goal == Goal.ALLZONES_DOOMSDAY_HYPER)
 			{
-				return Archipelago.AreAllZonesComplete(true, false, false) && emeralds >= 14
+				return Archipelago.AreAllZonesComplete(true, false, knuckles) && emeralds >= 14
 			}
 		}
 
@@ -199,17 +194,27 @@ function bool Archipelago.IsZoneUnlocked(string zone, bool knuckles)
 	else if (unlockMode == ZoneUnlockMode.LINEAR)
 	{
 		u8 index = -1
+		u8 count = 0
 		string zones[14]
+		u64 unlocks = Archipelago.getItemCount(Item.PROGRESSIVE_ZONE_UNLOCK)
+		bool knucklesSanctuary = knuckles && data.getInteger("KnucklesGoal") == Goal.ALLZONES_SANCTUARY
 		data.enterRoot()
 		data.enterArray("ZonesAllowed")
 		for (u8 i = 0; data.hasIndex(i); i++)
 		{
-			zones[i] = data.getString(i)
-			if (zones[i] == zone)
+			if (knucklesSanctuary && data.getString(i) == "Sky Sanctuary Zone")
 			{
-				index = i
+				continue
+			}
+			
+			zones[count] = data.getString(i)
+			if (zones[count] == zone)
+			{
+				index = count
 				break
 			}
+			
+			count++
 		}
 
 		data.enterRoot()
@@ -220,7 +225,7 @@ function bool Archipelago.IsZoneUnlocked(string zone, bool knuckles)
 			prevZoneId = Archipelago.ZoneNameToId(zones[index-1])
 		}
 		
-		return index >= 0 && (prevZoneId == -1 || Archipelago.GetZoneActsCompleted(prevZoneId, knuckles) >= Archipelago.GetZoneRequiredActCount(prevZoneId)) && Archipelago.getItemCount(Item.PROGRESSIVE_ZONE_UNLOCK) >= index+1
+		return index >= 0 && (prevZoneId == -1 || Archipelago.GetZoneActsCompleted(prevZoneId, knuckles) >= Archipelago.GetZoneRequiredActCount(prevZoneId)) && unlocks >= index+1
 	}
 	else if (zone == "Death Egg Zone")
 	{
@@ -233,7 +238,7 @@ function bool Archipelago.IsZoneUnlocked(string zone, bool knuckles)
 	return (Archipelago.getItemCount(Archipelago.ZoneNameToItem(zone)) > 0)
 }
 
-function string Archipelago.GetZoneNameInternal(u8 id)
+function string Archipelago.ZoneIdToName(u8 id)
 {
 	if (id == 0x00)
 		return "Angel Island Zone"

@@ -3,14 +3,7 @@ constant u8 ZONE_SPECIAL_STAGE = 14
 function u8 ActSelect.GetNumZones()
 {
 	JsonReader data = Archipelago.getSlotData()
-	u8 numZones = 0
-	data.enterArray("ZonesAllowed")
-	for (u16 i = 0; data.hasIndex(i); i++)
-	{
-		numZones++
-	}
-	
-	data.enterRoot()
+	u8 numZones = data.getInteger("ZoneCount")
 	if (data.getInteger("SpecialStageUnlockItemCount") > 0)
 	{
 		numZones++
@@ -143,12 +136,11 @@ function void ActSelect.Menu(u8 fadeInMethod)
 	}
 	
 	string zoneList[14]
-	u8 zoneCount = 0
+	u8 zoneCount = data.getInteger("ZoneCount")
 	data.enterArray("ZonesAllowed")
 	for (u8 i = 0; data.hasIndex(i); i++)
 	{
 		zoneList[i] = data.getString(i)
-		zoneCount++
 	}
 	
 	data.enterRoot()
@@ -451,9 +443,10 @@ function void ActSelect.Menu(u8 fadeInMethod)
 		}
 		else
 		{
-			if (Archipelago.ZoneNameToId(zoneList[selectedZone]) == 0x0a && levelselect.characters >= 3)
+			if (Archipelago.IsKnucklesGoalNecessary() && data.getInteger("KnucklesGoal") == Goal.ALLZONES_SANCTUARY && Archipelago.ZoneNameToId(zoneList[selectedZone]) == 0x0a)
 			{
-				selectedAct = 1
+				if (levelselect.characters >= 3)
+					selectedAct = 1
 			}
 			
 			global.zone_act = ActSelect.TranslateZoneAct(selectedZone, selectedAct)

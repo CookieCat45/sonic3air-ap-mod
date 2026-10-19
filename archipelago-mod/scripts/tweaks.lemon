@@ -26,7 +26,7 @@ function void TriggerNextZone(u16 zoneAndAct)
 	
 	// Don't prevent entry to some levels (LRZ boss, outro, etc)
 	bool validAct = zoneAndAct != 0x1600 && zoneAndAct != 0x1700 && zoneAndAct != 0x0d01 && zoneAndAct != 0x0d00
-	string zoneName = Archipelago.GetZoneNameInternal(zone)
+	string zoneName = Archipelago.ZoneIdToName(zone)
 	if (validAct && (!Archipelago.IsZoneUnlocked(zoneName, isMainCharacter(CHARACTER_KNUCKLES)) || !Archipelago.IsZoneAllowed(zoneName)))
 	{
 		Game.returnToMainMenu()

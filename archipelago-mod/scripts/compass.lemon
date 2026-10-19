@@ -109,6 +109,16 @@ function void RenderCompass()
 {
 	u16 charX = u16[0xffffb000 + 0x10]
 	u16 charY = u16[0xffffb000 + 0x14]
+	bool fixSSZWrap = (global.zone_act == 0x0a00 && level.vertical_wrap == 0xff00)
+	if (fixSSZWrap)
+	{
+		// There has to be a better way of doing this
+		if (charY > 3391)
+		{
+			charY = level.height.bitmask - charY
+		}
+	}
+	
 	s16 closestX = 0
 	s16 closestY = 0
 	double closestDistance = 0
@@ -126,14 +136,24 @@ function void RenderCompass()
 		if (MonitorYPositions[i] != 0)
 		{
 			py = MonitorYPositions[i]
+			if (TrackedObjectIDs[i] != 282066947)
+			{
+				continue
+			}
 		}
 		else
 		{
 			py = TrackedObjectIDs[i] & 0xFFFF
 		}
 		
+		if (fixSSZWrap && py > 3391)
+		{
+			py = level.height.bitmask - py
+		}
+		
 		double dx = double(charX) - double(px)
 		double dy = double(charY) - double(py)
+		//LogDec = stringformat("charY: %d, py: %d", charY, py)
 		double distance = Math.sqrt(dx * dx + dy * dy)
 		if (!found || distance < closestDistance)
 		{
