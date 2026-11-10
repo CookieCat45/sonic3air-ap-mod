@@ -26,7 +26,7 @@ function bool Archipelago.IsKnucklesExclusive()
 
 function void Archipelago.UpdateEmeraldCount()
 {
-	u8 emeraldCount = Archipelago.getItemCount(Item.CHAOS_EMERALD)
+	u8 emeraldCount = Archipelago.GetEmeraldCount()
 	global.chaos_emeralds = 0
 	global.super_emeralds = 0
 	zeroMemory(0xffffffb2, 7)
@@ -47,6 +47,24 @@ function void Archipelago.UpdateEmeraldCount()
 			break
 		}
 	}
+}
+
+function u8 Archipelago.GetEmeraldCount()
+{
+	u8 emeraldCount = Archipelago.getItemCount(Item.CHAOS_EMERALD)
+	JsonReader data = Archipelago.getSlotData()
+	u8 fragmentReq = data.getInteger("ChaosEmeraldFragments")
+	if (fragmentReq > 1)
+	{
+		emeraldCount += Archipelago.getItemCount(Item.CHAOS_EMERALD_FRAGMENT) / fragmentReq
+	}
+	
+	if (emeraldCount > 7 && data.getInteger("DisableSuperEmeralds"))
+	{
+		emeraldCount = 7
+	}
+	
+	return emeraldCount
 }
 
 function void Archipelago.ApplySpeedUp()
@@ -99,7 +117,7 @@ function bool Archipelago.IsGoalComplete()
 	
 	JsonReader data = Archipelago.getSlotData()
 	bool complete = false
-	u8 emeralds = Archipelago.getItemCount(Item.CHAOS_EMERALD)
+	u8 emeralds = Archipelago.GetEmeraldCount()
 	if (!Archipelago.IsKnucklesExclusive())
 	{
 		u8 goal = data.getInteger("Goal")

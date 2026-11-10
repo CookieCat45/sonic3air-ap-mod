@@ -55,5 +55,6 @@ function u32 Archipelago.getObjectId_Monitor(u16 x, u8 subtype)
 {
 	subtype &= ~0x10
 	u32 id = u32((x << 16) | subtype)
+	id += global.zone * 10000
 	return id
 }

@@ -157,12 +157,29 @@ function bool Archipelago.IsZoneUnlocked(string zone, bool knuckles)
 	JsonReader data = Archipelago.getSlotData()
 	data.enterRoot()
 	u8 unlockMode = data.getInteger("ZoneUnlockMode")
+	if (knuckles && zone == "Sky Sanctuary Zone" && data.getInteger("KnucklesGoal") == Goal.ALLZONES_SANCTUARY)
+	{
+		bool deathEggRequired = (unlockMode == ZoneUnlockMode.SHUFFLED_DEATHEGG)
+		if (!Archipelago.AreAllZonesComplete(!deathEggRequired, false, true))
+		{
+			return false
+		}
+	}
+	
+	if (zone == "Death Egg Zone" && unlockMode == ZoneUnlockMode.SHUFFLED_DEATHEGG)
+	{
+		if (!Archipelago.AreAllZonesComplete(false, false, knuckles))
+		{
+			return false
+		}
+	}
+	
 	if (zone == "Doomsday Zone")
 	{
 		if (!knuckles || data.getInteger("KnucklesGoal") != Goal.ALLZONES_SANCTUARY)
 		{
 			u8 goal = knuckles ? data.getInteger("KnucklesGoal") : data.getInteger("Goal")
-			u8 emeralds = Archipelago.getItemCount(Item.CHAOS_EMERALD)
+			u8 emeralds = Archipelago.GetEmeraldCount()
 			if (goal == Goal.DOOMSDAY)
 			{
 				return emeralds >= 7
@@ -186,10 +203,6 @@ function bool Archipelago.IsZoneUnlocked(string zone, bool knuckles)
 	else if (zone == "Special Stage")
 	{
 		return Archipelago.getItemCount(Item.PROGRESSIVE_SPECIAL_UNLOCK) > 0
-	}
-	else if (knuckles && zone == "Sky Sanctuary Zone" && data.getInteger("KnucklesGoal") == Goal.ALLZONES_SANCTUARY)
-	{
-		return Archipelago.AreAllZonesComplete(true, false, true)
 	}
 	else if (unlockMode == ZoneUnlockMode.LINEAR)
 	{
@@ -226,13 +239,6 @@ function bool Archipelago.IsZoneUnlocked(string zone, bool knuckles)
 		}
 		
 		return index >= 0 && (prevZoneId == -1 || Archipelago.GetZoneActsCompleted(prevZoneId, knuckles) >= Archipelago.GetZoneRequiredActCount(prevZoneId)) && unlocks >= index+1
-	}
-	else if (zone == "Death Egg Zone")
-	{
-		if (unlockMode == ZoneUnlockMode.SHUFFLED_DEATHEGG)
-		{
-			return Archipelago.AreAllZonesComplete(false, false, knuckles)
-		}
 	}
 	
 	return (Archipelago.getItemCount(Archipelago.ZoneNameToItem(zone)) > 0)

@@ -46,6 +46,7 @@ constant u64 Item.PROGRESSIVE_SPECIAL_UNLOCK = 2020300025
 constant u64 Item.CHAOS_EMERALD = 2020300026
 constant u64 Item.SPRING_TRAP = 2020300027
 constant u64 Item.MISSILE_TRAP = 2020300028
+constant u64 Item.CHAOS_EMERALD_FRAGMENT = 2020300029
 
 // Option values (from the apworld)
 constant u8 Goal.ALLZONES = 0
@@ -149,6 +150,12 @@ function void Game.onZoneActCompleted(u16 zoneAndAct)
 {
 	if (Game.isTimeAttack() || global.rolling_demo)
 	{
+		return
+	}
+	
+	if (zoneAndAct == 0x0901)
+	{
+		// don't trigger this too early
 		return
 	}
 	
