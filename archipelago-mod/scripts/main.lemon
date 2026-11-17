@@ -496,13 +496,13 @@ function void SendDeath()
 		return
 	
 	string name = Archipelago.getPlayerName()
-	u64 time = Archipelago.getTime()
+	float time = System.now()
 	if (HasDrowned)
 	{
-		Archipelago.sendBounce(stringformat("{\"cmd\":\"Bounce\",\"data\":{\"time\":%d,\"source\":\"%s\",\"cause\":\"%s couldn't find oxygen\"},\"tags\":[\"DeathLink\"]}", time, name, name))
+		Archipelago.sendBounce(stringformat("{\"cmd\":\"Bounce\",\"data\":{\"time\":%.0f,\"source\":\"%s\",\"cause\":\"%s couldn't find oxygen\"},\"tags\":[\"DeathLink\"]}", time, name, name))
 	}
 	else
 	{
-		Archipelago.sendBounce(stringformat("{\"cmd\":\"Bounce\",\"data\":{\"time\":%d,\"source\":\"%s\"},\"tags\":[\"DeathLink\"]}", time, name))
+		Archipelago.sendBounce(stringformat("{\"cmd\":\"Bounce\",\"data\":{\"time\":%.0f,\"source\":\"%s\"},\"tags\":[\"DeathLink\"]}", time, name))
 	}
 }

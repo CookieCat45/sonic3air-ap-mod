@@ -286,22 +286,28 @@ function void ActSelect.Menu(u8 fadeInMethod)
 			u8 oldAct = selectedAct
 			u16 oldCharacters = levelselect.characters
 			bool changedToSpecial = false
-			if (selectedEntry == 0 && selectedZone != ZONE_SPECIAL_STAGE && (optionChange == -1 && selectedZone <= 0 || optionChange == 1 && selectedZone+2 >= ActSelect.GetNumZones()))
+			if (selectedEntry == 0 && selectedZone != ZONE_SPECIAL_STAGE && data.getInteger("SpecialStageUnlockItemCount") > 0 && (optionChange == -1 && selectedZone <= 0 || optionChange == 1 && selectedZone+2 >= ActSelect.GetNumZones()))
 			{
 				selectedZone = ZONE_SPECIAL_STAGE
 			}
 			else if (selectedEntry == 0)
 			{
-				if (optionChange == 1 && selectedZone >= zoneCount)
+				bool wrapRight = false
+				if (optionChange == 1 && selectedZone >= ActSelect.GetNumZones()-1)
 				{
-					selectedZone = -1
+					selectedZone = 0
+					wrapRight = true
 				}
 				else if (optionChange == -1 && selectedZone == 0)
 				{
 					selectedZone = ActSelect.GetNumZones()
 				}
 				
-				selectedZone = clamp(s16(selectedZone) + optionChange, 0, ActSelect.GetNumZones() - 1)
+				if (!wrapRight)
+				{
+					selectedZone = clamp(s16(selectedZone) + optionChange, 0, ActSelect.GetNumZones() - 1)
+				}
+				
 				while (!Archipelago.IsZoneAllowed(zoneList[selectedZone]))
 				{
 					selectedZone += optionChange
@@ -504,7 +510,7 @@ function void ActSelect.DrawMenu(u8 selectedEntry, u8 selectedZone, u8 selectedA
 		{
 			text = ActSelect.GetZoneName(selectedZone)
 			canGoLeft = (selectedZone >= 0)
-			canGoRight = (selectedZone < ActSelect.GetNumZones() - 1 || selectedZone == ZONE_SPECIAL_STAGE)
+			canGoRight = (selectedZone < ActSelect.GetNumZones() || selectedZone == ZONE_SPECIAL_STAGE)
 			if (selectedZone != ZONE_SPECIAL_STAGE)
 			{
 				u8 zoneInternal = Archipelago.ZoneNameToId(Archipelago.GetZoneNameByListIndex(selectedZone))
