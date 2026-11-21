@@ -153,12 +153,6 @@ function void Game.onZoneActCompleted(u16 zoneAndAct)
 		return
 	}
 	
-	if (zoneAndAct == 0x0901)
-	{
-		// don't trigger this too early
-		return
-	}
-	
 	u8 zone = zoneAndAct >> 8
 	u8 act = zoneAndAct & 0xFF
 	u32 addr = Addr.ZoneProgressStart + u32(zone)
@@ -166,6 +160,12 @@ function void Game.onZoneActCompleted(u16 zoneAndAct)
 	if (knuckles)
 	{
 		addr = Addr.ZoneProgressStart.Knuckles + u32(zone)
+	}
+	
+	if (zoneAndAct == 0x0901 && !knuckles)
+	{
+		// don't trigger this too early
+		return
 	}
 	
 	// Fix some oddities with zone/act IDs
@@ -185,6 +185,11 @@ function void Game.onZoneActCompleted(u16 zoneAndAct)
 	u8[addr] |= 1 << act
 	System.savePersistentData(addr, 4, "s3air_archipelago", stringformat("ZoneProgress%d_%d_%s", zone, knuckles, seed), false)
 	u64 id = Archipelago.getZoneActIdOffset(zone, act)
+	if (zoneAndAct == 0x1601)
+	{
+		id = 22500
+	}
+	
 	LogDec = stringformat("%s Act %d: %d", Archipelago.ZoneIdToName(zone), act, id)
 	Archipelago.sendLocation(id)
 	Archipelago.CheckGoalCompletion()
